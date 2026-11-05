@@ -1,0 +1,2551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wordly Usage Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style id="app-style">
+  :root {
+    color-scheme: light;
+    --blue: #017CFF;
+    --blue-2: #1BC3E4;
+    --green-2: #48EA76;
+    --gradient: linear-gradient(to right, #017CFF, #1BC3E4, #48EA76);
+    --bg: #F2F2F2;
+    --surface: #FFFFFF;
+    --surface-2: #F7F8FA;
+    --text: #353535;
+    --muted: #6B6F75;
+    --line: #DFDFDF;
+    --warn-bg: #FFF4DE;
+    --warn-text: #8A4B00;
+    --font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --blue: #4A9EFF;
+      --bg: #1C1E21;
+      --surface: #25282C;
+      --surface-2: #2C3035;
+      --text: #ECEDEE;
+      --muted: #A5A9AF;
+      --line: #3A3E44;
+      --warn-bg: #3A2E17;
+      --warn-text: #FFCE7A;
+    }
+  }
+  :root[data-theme="dark"] {
+      color-scheme: dark;
+      --blue: #4A9EFF;
+      --bg: #1C1E21;
+      --surface: #25282C;
+      --surface-2: #2C3035;
+      --text: #ECEDEE;
+      --muted: #A5A9AF;
+      --line: #3A3E44;
+      --warn-bg: #3A2E17;
+      --warn-text: #FFCE7A;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+  header.top::before { content: ""; display: block; height: 4px; background: var(--gradient); }
+  .top-inner { max-width: 1280px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+  .wordmark { font-weight: 700; font-size: 22px; color: var(--blue); letter-spacing: -0.02em; }
+  .brand-sub { color: var(--muted); font-weight: 500; }
+  .customer { font-weight: 700; font-size: 15px; }
+  .range { color: var(--muted); font-size: 14px; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 14px; font-weight: 500; }
+  .btn:hover { border-color: var(--blue); }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Upload */
+  .upload { max-width: 760px; margin: 40px auto; }
+  .upload h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .upload p.lead { color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
+  .drop { border: 2px dashed var(--line); border-radius: 14px; background: var(--surface); padding: 40px 24px; text-align: center; transition: border-color .15s, background .15s; }
+  .drop.over { border-color: var(--blue); background: var(--surface-2); }
+  .drop strong { display: block; font-size: 17px; margin-bottom: 4px; }
+  .drop span { color: var(--muted); }
+  .drop .btn { margin-top: 16px; }
+  .file-list { list-style: none; padding: 0; margin: 20px 0; }
+  .file-list li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+  .file-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { font-size: 13px; font-weight: 500; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+  .tag.tx { background: rgba(1,124,255,.12); color: var(--blue); }
+  .tag.usage { background: rgba(18,151,55,.14); color: #129737; }
+  .tag.bad { background: var(--warn-bg); color: var(--warn-text); }
+  .remove { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 4px 6px; }
+  .upload-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .hint { color: var(--muted); font-size: 14px; }
+  .tl-summary { margin: 0 0 12px; }
+  .tl-scroll { overflow-x: auto; }
+  .tl { min-width: 760px; }
+  .tl-axis, .tl-row { display: grid; grid-template-columns: 240px 1fr; align-items: center; }
+  .tl-label-head { font-size: 13px; color: var(--muted); }
+  .tl-row { border-top: 1px solid var(--line); }
+  .tl-label { padding: 8px 12px 8px 0; min-width: 0; }
+  .tl-title { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-sub { font-size: 13px; color: var(--muted); }
+  .tl-track { position: relative; height: 44px; }
+  .tl-ticks { height: 28px; }
+  .tl-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+  .tl-tick { position: absolute; bottom: 6px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tl-tick.first { transform: none; }
+  .tl-bar { position: absolute; top: 10px; height: 24px; min-width: 5px; border: 0; padding: 0; border-radius: 5px; background: var(--blue); }
+  .tl-bar.unbilled { background: repeating-linear-gradient(135deg, var(--blue-2) 0 3px, transparent 3px 7px); box-shadow: inset 0 0 0 1.5px var(--blue-2); }
+  .tl-bar.from-prev { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .tl-bar.to-next { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .tl-bar:hover, .tl-bar.sel { outline: 2px solid var(--text); outline-offset: 1px; z-index: 2; }
+  .tl-foot { display: flex; gap: 12px 24px; align-items: baseline; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+  .tl-legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+  .tl-key { display: inline-block; width: 18px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--blue); vertical-align: -1px; }
+  .tl-key.unbilled { background: repeating-linear-gradient(135deg, var(--blue-2) 0 3px, transparent 3px 7px); box-shadow: inset 0 0 0 1.5px var(--blue-2); }
+  .tl-detail { flex: 1; min-width: 240px; font-size: 14px; }
+  @media (max-width: 860px) { .tl-axis, .tl-row { grid-template-columns: 150px 1fr; } }
+  .event.group { border-left: 4px solid var(--blue); }
+  .gmeta { color: var(--muted); font-size: 14px; }
+  .suggest { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 20px; }
+  .chip { border: 1px dashed var(--blue); background: var(--surface); border-radius: 999px; padding: 6px 8px 6px 14px; display: inline-flex; gap: 10px; align-items: center; font-size: 14px; }
+  .chip:hover { background: var(--surface-2); }
+  .chip .plus { background: var(--blue); color: #fff; border-radius: 999px; padding: 2px 10px; font-weight: 500; font-size: 13px; }
+  .pick-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; }
+  .pick { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .pick:last-child { border-bottom: 0; }
+  .pick:hover { background: var(--surface-2); }
+  .pick input { margin-top: 4px; }
+  .pick b { display: block; font-weight: 500; }
+  .pick small { color: var(--muted); font-size: 13px; }
+  #gSearch { background: var(--surface-2); }
+  .tl-day + .tl-day { margin-top: 24px; padding-top: 20px; border-top: 2px solid var(--line); }
+  .tl-day-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .tl-day-head h3 { margin: 0; font-size: 16px; }
+  .tl-more { margin-top: 16px; }
+  table.data tfoot td { background: var(--surface-2); }
+  tr.row-sel td { background: var(--surface-2); }
+  .acct-body { grid-template-columns: minmax(280px, 1fr) 2fr; align-items: start; }
+  @media (max-width: 860px) { .acct-body { grid-template-columns: 1fr; } }
+  .bulk-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--blue); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .bulk-bar span { font-weight: 500; margin-right: auto; }
+  .btn.danger { border-color: #C0392B; color: #C0392B; }
+  .btn.danger:hover { background: rgba(192,57,43,.08); }
+  .pick-col { width: 36px; }
+  .remove-row { border: 0; background: none; color: var(--muted); padding: 4px 6px; border-radius: 6px; font-size: 13px; }
+  .remove-row:hover { color: #C0392B; background: rgba(192,57,43,.08); }
+  .removed summary { cursor: pointer; font-weight: 500; }
+  .removed-list { margin-top: 10px; max-height: 260px; overflow-y: auto; }
+  .removed-item { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .removed-item .btn { padding: 3px 10px; font-size: 13px; }
+  .unit-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+  .unit-toggle button { border: 0; background: none; padding: 7px 12px; font-weight: 500; color: var(--muted); }
+  .unit-toggle button[aria-pressed="true"] { background: var(--blue); color: #fff; }
+  .cust h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .cs-q { width: 100%; font-size: 17px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .cs-q:focus { border-color: var(--blue); outline: none; }
+  .cs-results { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 340px; overflow-y: auto; }
+  .cs-row { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .cs-row:hover { border-color: var(--blue); }
+  .cs-row.on { border-color: var(--blue); box-shadow: inset 4px 0 0 var(--blue); background: var(--surface-2); }
+  .cs-kind { font-size: 12px; font-weight: 500; color: var(--blue); }
+  .cs-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cs-selected, .saved { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .saved-chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); overflow: hidden; font-size: 14px; }
+  .chip-main { border: 0; background: none; padding: 6px 4px 6px 14px; }
+  button.chip-main:hover { color: var(--blue); }
+  .chip-x { border: 0; background: none; color: var(--muted); padding: 6px 12px 6px 6px; font-size: 16px; line-height: 1; }
+  .cs-form { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin: 16px 0; }
+  .cs-form .field { margin: 0; flex: 1 1 240px; }
+  .cs-form label { color: var(--muted); font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .cs-form .field { color: var(--text); flex-direction: column; align-items: stretch; gap: 6px; }
+  .unit-toggle[hidden] { display: none; }
+  .cs-save { padding-bottom: 8px; }
+  @media (max-width: 600px) { .cs-row { grid-template-columns: 1fr auto; } .cs-kind { grid-column: 1 / -1; } }
+  .neg { color: #C0392B; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .neg { color: #FF8A7A; } }
+  :root[data-theme="dark"] .neg { color: #FF8A7A; }
+  .notice.info { background: rgba(1,124,255,.10); color: var(--text); }
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); width: min(560px, calc(100% - 32px)); padding: 24px; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dlg-head h2 { margin: 0; font-size: 20px; }
+  .field { display: flex; flex-direction: column; gap: 6px; font-weight: 500; margin: 16px 0; }
+  .field input, .share-link input { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-weight: 400; }
+  .share-link { display: flex; gap: 8px; margin-top: 16px; }
+  .share-link input { flex: 1; min-width: 0; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--text); color: var(--surface); padding: 10px 18px; border-radius: 10px; font-weight: 500; z-index: 20; }
+  .diag { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; }
+  .diag summary { font-weight: 700; cursor: pointer; }
+  .diag .stats-table td:last-child { font-weight: 500; }
+  .error { background: var(--warn-bg); color: var(--warn-text); padding: 12px 16px; border-radius: 10px; margin: 16px 0; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 24px; overflow-x: auto; }
+  .tab { border: 0; background: none; padding: 10px 16px; font-weight: 500; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--blue); }
+
+  .notice { background: var(--warn-bg); color: var(--warn-text); padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
+  .notice summary { cursor: pointer; font-weight: 500; }
+  .notice ul { margin: 8px 0 0; padding-left: 20px; }
+
+  /* KPI strip: one band, divided, not separate cards */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 24px; overflow: hidden; }
+  .kpi { padding: 20px 24px; border-left: 1px solid var(--line); }
+  .kpi:first-child { border-left: 0; }
+  .kpi .v { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .kpi .l { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .kpi:first-child .v { color: var(--blue); }
+
+  h2.section { font-size: 17px; margin: 0 0 12px; }
+  .balances { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .balance { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .balance .acct { font-weight: 700; }
+  .balance .email { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .balance .left { margin-top: 8px; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .balance .left small { font-size: 13px; font-weight: 500; color: var(--muted); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; min-width: 0; }
+  .panel h3 { margin: 0 0 14px; font-size: 15px; }
+  .chart-box { position: relative; height: 280px; }
+  .grid2 > .panel:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .share { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: var(--surface-2); margin-right: 8px; vertical-align: middle; overflow: hidden; }
+  .share span { display: block; height: 100%; background: var(--blue); }
+
+  /* Events */
+  .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .toolbar label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .filters { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+  .filters input[type="time"] { margin-left: 4px; }
+  .filter-summary { margin: 0 0 16px; }
+  select, input[type="date"], input[type="time"], input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .events { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .event { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .event:hover { border-color: var(--blue); }
+  .event[aria-expanded="true"] { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .event .t { font-weight: 700; line-height: 1.3; }
+  .event .stats { display: flex; gap: 16px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+  .event .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .langbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--surface-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  .drill { background: var(--surface); border: 1px solid var(--blue); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+  .drill-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .drill-head h3 { margin: 0; flex: 1; font-size: 18px; }
+  .drill-body { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: center; }
+  .stats-table { width: 100%; border-collapse: collapse; }
+  .stats-table td { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .stats-table td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.data th, table.data td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.data th { background: var(--surface-2); font-weight: 500; position: sticky; top: 0; }
+  table.data th button { border: 0; background: none; padding: 0; font-weight: 500; color: inherit; }
+  table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data td.wrap { white-space: normal; min-width: 180px; }
+  table.data tbody tr:hover { background: var(--surface-2); }
+  .pager { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; color: var(--muted); font-size: 14px; gap: 12px; flex-wrap: wrap; }
+  .pager .btn { padding: 6px 12px; }
+  .pager .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .empty { color: var(--muted); padding: 32px; text-align: center; }
+
+  @media (max-width: 860px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .kpi:nth-child(3) { border-left: 0; }
+    .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .grid2, .drill-body { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    .top-inner { padding: 12px 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ===== Visual system v2: Wordly brand, quiet and structured ===== */
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #F7F9FC; --line: #E2E6EC;
+    --text: #353535; --muted: #66707D; --blue: #017CFF; --tint: rgba(1,124,255,.08);
+    --warn-line: #FFB631; --warn-bg: #FFFFFF; --warn-text: #353535;
+    --r: 8px; --r-sm: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1520; --surface: #131E2B; --surface-2: #192636; --line: #233246;
+      --text: #E6ECF2; --muted: #8FA0B3; --blue: #4AA0FF; --tint: rgba(74,160,255,.12);
+      --warn-bg: #131E2B; --warn-text: #E6ECF2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1520; --surface: #131E2B; --surface-2: #192636; --line: #233246;
+    --text: #E6ECF2; --muted: #8FA0B3; --blue: #4AA0FF; --tint: rgba(74,160,255,.12);
+    --warn-bg: #131E2B; --warn-text: #E6ECF2;
+  }
+  body { font-size: 14px; }
+  main { max-width: 1440px; padding: 28px 32px 48px; }
+
+  header.top { border-bottom: 1px solid var(--line); }
+  header.top::before { height: 2px; }
+  .top-inner { max-width: 1440px; padding: 10px 32px; min-height: 56px; gap: 10px; }
+  .wordmark { font-size: 20px; }
+  .brand-sub { padding-left: 10px; border-left: 1px solid var(--line); font-size: 14px; }
+  .top-inner #customer, .top-inner #range { display: none; }
+
+  .btn { border-radius: var(--r-sm); padding: 7px 14px; font-size: 14px; }
+  .unit-toggle { border-radius: var(--r-sm); }
+  .unit-toggle button { font-size: 13px; padding: 7px 12px; }
+  select, input[type="date"], input[type="time"], input[type="search"], input[type="text"] { border-radius: var(--r-sm); }
+
+  /* Start screen */
+  .start { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 40px; align-items: start; max-width: 1180px; margin: 12px auto 0; }
+  .upload { max-width: none; margin: 0; }
+  .upload h1, .cust h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .upload p.lead { margin-bottom: 22px; }
+  .up-name { margin: 0 0 16px; max-width: 420px; }
+  .up-name input { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; font-size: 15px; font-weight: 400; }
+  .drop { border-radius: var(--r); border-width: 1.5px; padding: 36px 24px; }
+  .file-list li { border-radius: var(--r-sm); }
+  .tag { border-radius: var(--r-sm); }
+  .library { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; position: sticky; top: 20px; }
+  .lib-h { font-size: 16px; margin: 0 0 12px; }
+  .lib-cust { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+  .lib-name { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 700; margin-bottom: 4px; }
+  .lib-list { list-style: none; margin: 0; padding: 0; }
+  .lib-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-top: 1px dashed var(--line); }
+  .lib-list li:first-child { border-top: 0; }
+  .lib-open { border: 0; background: none; padding: 0; text-align: left; color: var(--blue); font-weight: 500; }
+  .lib-open:hover { text-decoration: underline; }
+  .lib-meta { grid-column: 1; font-size: 13px; color: var(--muted); }
+  .lib-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .link-btn { border: 0; background: none; padding: 0; font-size: 13px; color: var(--muted); }
+  .link-btn:hover { color: var(--blue); text-decoration: underline; }
+  .link-btn.danger:hover { color: #C0392B; }
+  .lib-foot { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 14px; }
+
+  /* Dashboard */
+  .masthead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+  .masthead h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .masthead .meta { margin: 0; color: var(--muted); }
+  .masthead .unsaved { color: #B45F00; font-weight: 500; }
+  .ver { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .dash { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 32px; align-items: start; }
+  .dash > .tabs { flex-direction: column; border-bottom: 0; gap: 2px; margin: 0; position: sticky; top: 20px; overflow: visible; }
+  .dash > .tabs .tab { text-align: left; padding: 9px 12px; border: 0; border-radius: var(--r-sm); margin: 0; color: var(--muted); }
+  .dash > .tabs .tab:hover { color: var(--text); background: var(--surface); }
+  .dash > .tabs .tab[aria-selected="true"] { color: var(--blue); background: var(--tint); font-weight: 700; }
+  .content { min-width: 0; }
+
+  .notice { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--line); border-left: 3px solid var(--warn-line); border-radius: var(--r-sm); padding: 10px 14px; margin-bottom: 14px; }
+  .notice.info { background: var(--surface); border-left-color: var(--blue); color: var(--text); }
+  .error { border-radius: var(--r-sm); }
+  .filters { background: var(--surface); border-radius: var(--r); padding: 10px 14px; margin-bottom: 16px; }
+  .filter-summary { margin: -8px 0 16px; }
+  .hint.sources { margin: 0 0 10px; }
+
+  .kpis, .panel, .table-wrap, .drill, .event, .balance, .bulk-bar { border-radius: var(--r); }
+  .kpi { padding: 18px 22px; }
+  .kpi .v { font-size: 30px; }
+  .kpi .l { font-size: 13px; }
+  .panel h3 { font-size: 14px; font-weight: 700; }
+  h2.section { font-size: 16px; }
+  table.data th { font-weight: 600; color: var(--muted); font-size: 13px; }
+  table.data th button { color: inherit; }
+  .saved-chip, .chip { border-radius: var(--r-sm); }
+  .cs-row { border-radius: var(--r-sm); }
+  dialog { border-radius: var(--r); }
+
+  @media (max-width: 1000px) {
+    .start { grid-template-columns: 1fr; }
+    .library { position: static; }
+    .dash { grid-template-columns: 1fr; gap: 16px; }
+    .dash > .tabs { flex-direction: row; position: static; overflow-x: auto; border-bottom: 1px solid var(--line); }
+    .dash > .tabs .tab { white-space: nowrap; }
+    main { padding: 20px 16px 40px; }
+    .top-inner { padding: 10px 16px; }
+  }
+
+  /* ===== Style A: enterprise app ===== */
+  :root { --bar: #017CFF; --bar-ink: #FFFFFF; --bg: #F4F6F9; --surface-2: #F8FAFC; --line: #DDE3EA; --text: #2F3842; --muted: #66717E; --r: 4px; --r-sm: 4px; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bar: #0A4C99; --bg: #0E1621; --surface: #152131; --surface-2: #1B2A3D; --line: #263850; --text: #E6ECF2; --muted: #8FA0B3; }
+  }
+  :root[data-theme="dark"] { --bar: #0A4C99; --bg: #0E1621; --surface: #152131; --surface-2: #1B2A3D; --line: #263850; --text: #E6ECF2; --muted: #8FA0B3; }
+  body { font-size: 14px; }
+
+  header.top { background: var(--bar); border-bottom: 0; color: var(--bar-ink); }
+  header.top::before { display: none; }
+  .top-inner { min-height: 52px; padding: 8px 24px; max-width: none; }
+  .wordmark { color: #FFFFFF; font-size: 19px; }
+  .brand-sub { color: rgba(255,255,255,.82); border-left-color: rgba(255,255,255,.35); }
+  header.top .btn { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.45); padding: 6px 12px; }
+  header.top .btn:hover { background: rgba(255,255,255,.12); border-color: #FFFFFF; }
+  header.top .btn.primary { background: #FFFFFF; color: #0A4C99; border-color: #FFFFFF; font-weight: 700; }
+  header.top .btn.primary:hover { background: #E8F2FF; }
+  header.top .unit-toggle { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); }
+  header.top .unit-toggle button { color: rgba(255,255,255,.85); }
+  header.top .unit-toggle button[aria-pressed="true"] { background: #FFFFFF; color: #0A4C99; }
+  header.top :focus-visible { outline-color: #FFFFFF; }
+
+  main { max-width: none; padding: 0 24px 48px; }
+  .band { background: var(--surface); border-bottom: 1px solid var(--line); margin: 0 -24px 20px; padding: 0 24px; }
+  .band .masthead { border-bottom: 0; margin: 0; padding: 18px 0 10px; }
+  .band .masthead h1 { font-size: 24px; margin-bottom: 4px; }
+  .band .tabs { border-bottom: 0; margin: 0; gap: 2px; overflow-x: auto; }
+  .band .tab { padding: 10px 14px 9px; border-bottom: 3px solid transparent; color: var(--muted); font-weight: 500; border-radius: 0; }
+  .band .tab:hover { color: var(--text); }
+  .band .tab[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--blue); font-weight: 700; background: none; }
+  .content { max-width: 1400px; }
+  .ver[hidden] { display: none; }
+
+  .start { margin-top: 28px; }
+  .upload h1, .cust h1 { font-size: 26px; }
+
+  .kpis { background: transparent; border: 0; gap: 12px; overflow: visible; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+  .kpi + .kpi { border-left: 1px solid var(--line); }
+  .kpi .v { font-size: 26px; }
+  .kpi .l { font-size: 12px; margin-top: 2px; }
+  @media (max-width: 860px) { .kpi:nth-child(n+3) { border-top: 1px solid var(--line); } }
+
+  .panel { padding: 0 16px 16px; }
+  .panel h3 { margin: 0 -16px 14px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); font-size: 13px; border-radius: var(--r) var(--r) 0 0; }
+  .grid2 { gap: 16px; }
+  .filters { padding: 8px 12px; }
+  table.data { font-size: 13px; }
+  table.data th, table.data td { padding: 7px 10px; }
+  table.data th { background: var(--surface-2); }
+  .event, .balance { border-radius: var(--r); }
+  .drill { border-radius: var(--r); }
+  .notice { border-radius: 0 var(--r) var(--r) 0; }
+  .library, .drop, .file-list li { border-radius: var(--r); }
+  @media (max-width: 1000px) { main { padding: 0 16px 40px; } .band { margin: 0 -16px 16px; padding: 0 16px; } .top-inner { padding: 8px 16px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><span class="wordmark">Wordly</span><span class="brand-sub">Usage dashboard</span></div>
+    <span id="customer" class="customer"></span>
+    <span id="range" class="range"></span>
+    <div class="unit-toggle" id="unitToggle" role="group" aria-label="Show usage in" hidden><button data-unit="minutes">View in minutes</button><button data-unit="hours">View in hours</button></div>
+    <button id="saveBtn" class="btn primary" hidden>Save version</button>
+    <button id="shareBtn" class="btn" hidden>Share link</button>
+    <button id="exportBtn" class="btn" hidden>Download file</button>
+    <button id="restart" class="btn" hidden>New dashboard</button>
+  </div>
+</header>
+<main id="app"></main>
+
+<script id="app-script">
+/* ============================================================
+   Config
+   ============================================================ */
+const SHELL_HEADER = document.querySelector("header.top").outerHTML;
+const SHARE_BASE = "https://claude.ai/artifact/3fBkAt5wqtJC82xE71scbL";
+const LANG_COLORS = {
+  "English (US)": "#00b4d8", "Spanish (ES)": "#7b2d8b", "Spanish (LatAm)": "#06d6a0",
+  "Portuguese (BR)": "#f77f00", "English (UK)": "#e63946", "German": "#457b9d",
+  "Italian": "#2a9d8f", "Swahili": "#e9c46a", "Armenian": "#f4a261",
+  "Albanian": "#264653", "Slovenian": "#a8dadc", "Icelandic": "#6d6875"
+};
+const EXTRA_COLORS = ["#017CFF","#129737","#CD5500","#FFB631","#128197","#9b5de5","#f15bb5","#00bbf9","#8ac926","#ff595e","#6a4c93","#1982c4","#ffca3a","#43aa8b","#b5838d"];
+const extraAssigned = {};
+function langColor(l) {
+  if (LANG_COLORS[l]) return LANG_COLORS[l];
+  if (!extraAssigned[l]) extraAssigned[l] = EXTRA_COLORS[Object.keys(extraAssigned).length % EXTRA_COLORS.length];
+  return extraAssigned[l];
+}
+const ACCOUNT_COLORS = ["#017CFF","#1BC3E4","#48EA76","#129737","#FFB631","#CD5500","#128197","#9b5de5","#f15bb5","#6B6F75"];
+const USAGE_SKIP = new Set(["pool of minutes","workspace","connection","session id","title","date","time","timezone","real duration","minutes billed","account","label","presenters","attendees","languages","floor audio"]);
+const PAGE_SIZE = 20;
+
+/* ============================================================
+   State
+   ============================================================ */
+const state = {
+  files: [],          // {id, file, kind: 'tx'|'usage'|'bad', note}
+  data: null,
+  tab: "overview",
+  readOnly: false, sharedInfo: "", db: null,
+  workspace: "",
+  tlDay: null, tlView: "day",
+  baseData: null, tz: "", groups: [], eventGroup: "",
+  range: { fromDate: "", fromTime: "", toDate: "", toTime: "" },
+  eventSort: "minutes",
+  unit: (() => { try { return localStorage.getItem("wordly-unit") || "minutes"; } catch { return "minutes"; } })(),
+  selectedEvent: null,
+  table: { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" }
+};
+const charts = {};
+let fileSeq = 0;
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fmtN = n => Math.round(n || 0).toLocaleString();
+const norm = h => String(h ?? "").trim().toLowerCase();
+const pad = n => String(n).padStart(2, "0");
+// Settings storage: the browser, plus a file on the server when served by server.js
+const store = {
+  cache: null,
+  get(k) { if (this.cache && k in this.cache) return this.cache[k]; try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) {
+    try { localStorage.setItem(k, v); } catch {}
+    if (this.cache) {
+      this.cache[k] = v;
+      fetch("api/store", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: k, value: v }) }).catch(() => {});
+    }
+  },
+  async load() {
+    try {
+      const r = await fetch("api/store");
+      if (!r.ok) return;
+      this.cache = await r.json();
+      // Carry over anything saved only in this browser so far
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("wordly-") && k !== "wordly-unit" && !(k in this.cache)) this.set(k, localStorage.getItem(k));
+        }
+      } catch {}
+    } catch {}
+  }
+};
+// Minutes vs hours display
+const inHours = () => state.unit === "hours";
+function fmtM(m) { if (m == null) return ""; if (!inHours()) return fmtN(m); const h = m / 60; return h.toLocaleString(undefined, { maximumFractionDigits: Math.abs(h) < 100 ? 1 : 0 }); }
+const fmtCV = v => inHours() ? Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 }) : fmtN(v);
+const cv = m => inHours() ? Math.round((m / 60) * 10) / 10 : m;
+const U_ = () => inHours() ? "Hours" : "Minutes";
+const u_ = () => inHours() ? "hours" : "minutes";
+const us_ = () => inHours() ? "hr" : "min";
+const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const dayNum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthLabel = ym => { const [y, m] = ym.split("-"); return `${MONTHS[+m - 1]} ${y}`; };
+const prettyDate = s => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${MONTHS[+m - 1]} ${+d}, ${y}`; };
+function fmtClock(sec) {
+  if (sec == null) return "";
+  const h = Math.floor(sec / 3600) % 24, m = Math.floor(sec / 60) % 60;
+  return `${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? "AM" : "PM"}`;
+}
+function num(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return v;
+  const n = parseFloat(String(v).replace(/,/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+function parseDate(v) {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? ymd(d.y, d.m, d.d) : null; }
+  if (v instanceof Date) return ymd(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return ymd(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return ymd(y, +m[1], +m[2]); }
+  const d = new Date(s);
+  return isNaN(d) ? null : ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+function parseTime(v) { // -> seconds since midnight
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return Math.round((v - Math.floor(v)) * 86400) % 86400;
+  if (v instanceof Date) return v.getHours() * 3600 + v.getMinutes() * 60 + v.getSeconds();
+  const m = String(v).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?/);
+  if (!m) return null;
+  let h = +m[1];
+  const ap = m[4] && m[4].toLowerCase();
+  if (ap === "pm" && h < 12) h += 12;
+  if (ap === "am" && h === 12) h = 0;
+  return h * 3600 + +m[2] * 60 + (+m[3] || 0);
+}
+function parseDuration(s) {
+  if (!s) return 0;
+  if (typeof s === "number") return Math.round(s * 60); // assume minutes
+  const str = String(s); let t = 0, m;
+  if ((m = str.match(/(\d+)\s*(?:hr|hour|h\b)/i))) t += +m[1] * 3600;
+  if ((m = str.match(/(\d+)\s*min/i))) t += +m[1] * 60;
+  if ((m = str.match(/(\d+)\s*sec/i))) t += +m[1];
+  return t;
+}
+function fmtDuration(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ============================================================
+   File reading + detection
+   ============================================================ */
+async function readSheet(file) {
+  const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+}
+function findHeader(rows) {
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const h = (rows[i] || []).map(norm);
+    if (h.includes("debit/credit")) return { kind: "tx", idx: i, headers: rows[i] };
+    if (h.includes("session id") && (h.includes("minutes billed") || h.includes("real duration"))) return { kind: "usage", idx: i, headers: rows[i] };
+  }
+  return null;
+}
+async function detectFile(entry) {
+  try {
+    const rows = await readSheet(entry.file);
+    const hdr = findHeader(rows);
+    if (!hdr) { entry.kind = "bad"; entry.note = "Not a Transaction or Usage report"; return; }
+    entry.kind = hdr.kind; entry.rows = rows; entry.hdr = hdr;
+    const n = rows.slice(hdr.idx + 1).filter(r => r && r.some(c => c != null && c !== "")).length;
+    entry.note = `${hdr.kind === "tx" ? "Transaction report" : "Usage report"}, ${n.toLocaleString()} rows`;
+  } catch (e) {
+    entry.kind = "bad"; entry.note = "Couldn’t read this file";
+  }
+}
+
+/* ============================================================
+   Parsing (mirrors the wordly-platform-metrics join rules)
+   ============================================================ */
+// Keep the FIRST column for a repeated header (real Usage reports have two "Time" columns; the second is blank)
+function colIndex(headers) { const m = {}; headers.forEach((h, i) => { if (h != null && m[norm(h)] == null) m[norm(h)] = i; }); return m; }
+
+function parseTransactions(entry) {
+  const { idx, headers } = entry.hdr; const c = colIndex(headers);
+  const get = (r, k) => (c[k] != null ? r[c[k]] : null);
+  const out = [];
+  for (const r of entry.rows.slice(idx + 1)) {
+    if (!r || get(r, "date") == null) continue;
+    const date = parseDate(get(r, "date"));
+    if (!date) continue;
+    const desc = String(get(r, "description") ?? "");
+    const sm = desc.match(/Session\s+([A-Za-z0-9-]+)/i);
+    out.push({
+      date, endSec: parseTime(get(r, "time")),
+      accountName: get(r, "account name"), ownerEmail: get(r, "owner email"), ownerName: get(r, "owner name"),
+      user: get(r, "user"), dc: norm(get(r, "debit/credit")), description: desc || "",
+      sessionId: sm ? sm[1].toUpperCase() : null,
+      minutes: num(get(r, "minutes")),
+      balance: get(r, "balance") == null || get(r, "balance") === "" ? null : num(get(r, "balance")),
+      label: get(r, "label")
+    });
+  }
+  return out;
+}
+
+function findCol(c, names) {
+  for (const n of names) if (c[n] != null) return c[n];
+  const keys = Object.keys(c).filter(k => k !== "timezone");
+  for (const n of names) { const k = keys.find(k => k.includes(n)); if (k) return c[k]; }
+  return null;
+}
+function parseUsage(entry) {
+  const { idx, headers } = entry.hdr; const c = colIndex(headers);
+  const cols = {
+    "session id": findCol(c, ["session id", "session"]),
+    "title": findCol(c, ["title", "session title"]),
+    "date": findCol(c, ["date", "start date"]),
+    "time": findCol(c, ["time", "start time"]),
+    "real duration": findCol(c, ["real duration", "duration"]),
+    "minutes billed": findCol(c, ["minutes billed", "billed minutes", "billed"]),
+    "account": findCol(c, ["pool of minutes", "account"]),
+    "workspace": findCol(c, ["workspace"]),
+    "connection": findCol(c, ["connection"]),
+    "label": findCol(c, ["label"]),
+    "attendees": findCol(c, ["attendees"]),
+    "email": findCol(c, ["email", "email address"]),
+    "timezone": findCol(c, ["timezone", "time zone"])
+  };
+  const get = (r, k) => (cols[k] != null ? r[cols[k]] : null);
+  const stats = entry.stats = { rows: 0, noSession: 0, zeroMins: 0, badDate: 0, badTime: 0, samples: [] };
+  const dataRows = entry.rows.slice(idx + 1);
+  const usedCols = new Set(Object.values(cols).filter(v => v != null));
+  const isNumericCol = i => dataRows.every(r => { const v = r?.[i]; return v == null || v === "" || typeof v === "number" || /^\s*\d+(\.\d+)?\s*$/.test(String(v)); });
+  // Language columns: anything not a known field, holding only attendee counts
+  const langCols = headers.map((h, i) => [h, i]).filter(([h, i]) => h != null && String(h).trim() && !USAGE_SKIP.has(norm(h)) && !usedCols.has(i) && isNumericCol(i));
+  const out = [], timeline = entry.timeline = [];
+  for (const r of entry.rows.slice(idx + 1)) {
+    if (!r || !r.some(v => v != null && v !== "")) continue;
+    stats.rows++;
+    if (stats.samples.length < 2) stats.samples.push(r);
+    if (get(r, "session id") == null || get(r, "session id") === "") { stats.noSession++; continue; }
+    const date = parseDate(get(r, "date"));
+    let startSec = parseTime(get(r, "time"));
+    if (startSec == null) startSec = parseTime(get(r, "date"));
+    const durSecs = parseDuration(get(r, "real duration"));
+    const mins = num(get(r, "minutes billed"));
+    // The timeline uses real duration, so it keeps sessions with zero billed minutes
+    if (date && startSec != null && durSecs > 0) timeline.push({
+      sessionId: String(get(r, "session id")).trim().toUpperCase(),
+      title: get(r, "title") ? String(get(r, "title")).trim() : "Untitled",
+      date, startSec, durSecs, mins: cols["minutes billed"] != null ? mins : null,
+      tz: get(r, "timezone") != null ? String(get(r, "timezone")).trim() : "",
+      workspace: get(r, "workspace") != null ? String(get(r, "workspace")).trim() : ""
+    });
+    if (!mins) { stats.zeroMins++; continue; } // drop zero-minute rows
+    if (!date) { stats.badDate++; continue; }
+    if (startSec == null) { stats.badTime++; continue; }
+    const startMin = Math.floor(startSec / 60);
+    const endAbsMin = dayNum(date) * 1440 + startMin + Math.floor(durSecs / 60);
+    const languages = {};
+    for (const [h, i] of langCols) { const v = num(r[i]); if (v > 0) languages[String(h).trim()] = Math.round(v); }
+    out.push({
+      sessionId: String(get(r, "session id")).trim().toUpperCase(),
+      title: get(r, "title") ? String(get(r, "title")).trim() : "Untitled",
+      date, startSec, endAbsMin,
+      durationStr: get(r, "real duration"), durSecs, mins,
+      account: get(r, "account") ? String(get(r, "account")).trim() : "Unknown",
+      label: get(r, "label") || "",
+      workspace: get(r, "workspace") != null ? String(get(r, "workspace")).trim() : "",
+      connection: get(r, "connection") != null ? String(get(r, "connection")).trim() : "",
+      tz: get(r, "timezone") != null ? String(get(r, "timezone")).trim() : "",
+      email: get(r, "email") != null ? String(get(r, "email")).trim().toLowerCase() : "",
+      attendees: Math.round(num(get(r, "attendees"))),
+      languages
+    });
+  }
+  return out;
+}
+
+function joinReports(tx, usage) {
+  const bySession = {};
+  tx.filter(t => t.dc === "debit" && t.sessionId && t.endSec != null).forEach(t => {
+    t.endAbsMin = dayNum(t.date) * 1440 + Math.floor(t.endSec / 60);
+    (bySession[t.sessionId] ||= []).push(t);
+  });
+  const used = new Set(), joined = [], unmatched = [];
+  for (const u of usage) {
+    const cands = (bySession[u.sessionId] || []).filter(t => !used.has(t));
+    let match = cands.find(t => t.endAbsMin === u.endAbsMin) || cands.find(t => Math.abs(t.endAbsMin - u.endAbsMin) <= 1);
+    if (!match) { unmatched.push(u); continue; }
+    used.add(match);
+    joined.push({
+      ...u,
+      accountName: match.accountName, ownerEmail: match.ownerEmail, balanceAfter: match.balance,
+      ts: dayNum(u.date) * 86400 + u.startSec,
+      languagesStr: Object.entries(u.languages).map(([k, v]) => `${k}: ${v}`).join(", ")
+    });
+  }
+  return { joined, unmatched };
+}
+
+function usageOnly(usage) {
+  return usage.map(u => ({
+    ...u, accountName: null, ownerEmail: null, balanceAfter: null,
+    ts: dayNum(u.date) * 86400 + u.startSec,
+    languagesStr: Object.entries(u.languages).map(([k, v]) => `${k}: ${v}`).join(", ")
+  }));
+}
+
+function buildData(tx, usage, timelineRaw = []) {
+  const hasTx = Boolean(tx);
+  tx = tx || [];
+  const { joined, unmatched } = hasTx ? joinReports(tx, usage) : { joined: usageOnly(usage), unmatched: [] };
+  joined.forEach(r => { r.uid = `${r.sessionId}|${r.date}|${r.startSec}`; });
+  const balances = {};
+  [...tx].filter(t => t.balance != null && t.accountName)
+    .sort((a, b) => (dayNum(a.date) * 86400 + (a.endSec || 0)) - (dayNum(b.date) * 86400 + (b.endSec || 0)))
+    .forEach(t => { balances[t.accountName] = { balance: t.balance, email: t.ownerEmail }; });
+
+  // Customer name: most common owner email domain
+  const domains = {};
+  tx.forEach(t => { const d = String(t.ownerEmail || "").split("@")[1]; if (d) domains[d] = (domains[d] || 0) + 1; });
+  const topDomain = Object.entries(domains).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const customer = topDomain ? topDomain.split(".").slice(-2, -1)[0].replace(/^./, c => c.toUpperCase()) : "";
+
+  const timeline = buildTimeline(timelineRaw);
+  const dates = (joined.length ? joined.map(r => r.date) : timeline.items.map(x => dayToStr(Math.floor(x.start / 86400)))).sort();
+  return {
+    joined, unmatched, balances, customer, hasTx,
+    transactions: tx.map(t => ({ date: t.date, endSec: t.endSec, accountName: t.accountName, ownerEmail: t.ownerEmail, ownerName: t.ownerName, user: t.user, dc: t.dc, minutes: t.minutes, balance: t.balance, description: t.description })),
+    hasWorkspace: joined.some(r => r.workspace), hasConnection: joined.some(r => r.connection),
+    totalUsage: usage.length, txDebits: tx.filter(t => t.dc === "debit").length,
+    timeline,
+    range: dates.length ? [dates[0], dates[dates.length - 1]] : null
+  };
+}
+
+function activeRows() {
+  let rows = state.data.joined;
+  if (state.excluded?.size) rows = rows.filter(r => !state.excluded.has(r.uid));
+  if (state.workspace) rows = rows.filter(r => r.workspace === state.workspace);
+  const g = currentGroup();
+  if (g) { const set = new Set(g.titles); rows = rows.filter(x => set.has(x.title)); }
+  const r = state.range;
+  if (r.fromDate || r.toDate) {
+    const from = r.fromDate ? dayNum(r.fromDate) * 86400 + (r.fromTime ? parseTime(r.fromTime) : 0) : -Infinity;
+    const to = r.toDate ? dayNum(r.toDate) * 86400 + (r.toTime ? parseTime(r.toTime) + 59 : 86399) : Infinity;
+    rows = rows.filter(x => x.ts <= to && x.ts + x.durSecs >= from);
+  }
+  return rows;
+}
+
+/* ============================================================
+   Aggregations
+   ============================================================ */
+function sumBy(rows, keyFn, valFn) { const m = {}; rows.forEach(r => { const k = keyFn(r); m[k] = (m[k] || 0) + valFn(r); }); return m; }
+function monthsBetween(a, b) {
+  const out = []; let [y, m] = a.split("-").map(Number); const [ey, em] = b.split("-").map(Number);
+  while (y < ey || (y === ey && m <= em)) { out.push(`${y}-${pad(m)}`); m++; if (m > 12) { m = 1; y++; } }
+  return out;
+}
+function langTotals(rows) { const m = {}; rows.forEach(r => Object.entries(r.languages).forEach(([l, v]) => m[l] = (m[l] || 0) + v)); return m; }
+function eventsByTitle(rows) {
+  const m = {};
+  rows.forEach(r => {
+    const e = (m[r.title] ||= { title: r.title, minutes: 0, attendees: 0, instances: 0, languages: {} });
+    e.minutes += r.mins; e.attendees += r.attendees; e.instances++;
+    Object.entries(r.languages).forEach(([l, v]) => e.languages[l] = (e.languages[l] || 0) + v);
+  });
+  return Object.values(m);
+}
+
+/* ============================================================
+   Rendering: upload view
+   ============================================================ */
+function renderUpload(error, diag) {
+  $("#restart").hidden = true; $("#saveBtn").hidden = true; $("#unitToggle").hidden = true; $("#shareBtn").hidden = true; $("#exportBtn").hidden = true; $("#customer").textContent = ""; $("#range").textContent = "";
+  const hasTx = state.files.some(f => f.kind === "tx");
+  const hasUsage = state.files.some(f => f.kind === "usage");
+  const txCount = state.files.filter(f => f.kind === "tx").length;
+  let hint = "Add at least one Usage report. The Transaction report is optional.";
+  if (txCount > 1) hint = "Only one Transaction report can be used. Remove the extras.";
+  else if (hasTx && !hasUsage) hint = "Now add the Usage report(s).";
+  else if (!hasTx && hasUsage) hint = "Ready to build. Add the Admin Transaction report too if you want remaining balances.";
+  else if (hasTx && hasUsage) hint = "Ready to build.";
+  const badCount = state.files.filter(f => f.kind === "bad").length;
+  if (badCount) hint += ` ${badCount === 1 ? "1 file isn’t" : badCount + " files aren’t"} a recognized report and will be ignored.`;
+  const ready = txCount <= 1 && hasUsage;
+
+  $("#app").innerHTML = `
+    <div class="start">
+    <section class="upload">
+      ${state.apiMode ? customerSearchHtml() : `<h1>Create a usage dashboard</h1>
+      <p class="lead">Add the Usage reports from the Wordly portal, plus the Admin Transaction report if you want account balances. Reports are read on this computer and never uploaded.</p>
+      <label class="field up-name">Customer name<input type="text" id="upCustomer" list="upCustomers" value="${esc(state.uploadCustomer || "")}" placeholder="For example, Cohesity" autocomplete="off"></label>
+      <datalist id="upCustomers"></datalist>`}
+      <div class="drop" id="drop">
+        <strong>Drop report files here</strong>
+        <span>Excel files from the Wordly portal: one Usage report per login, plus the Transaction report if you have it</span><br>
+        <button class="btn" id="pick">Choose files</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple hidden>
+      </div>
+      ${error ? `<div class="error">${esc(error)}</div>` : ""}
+      ${diag || ""}
+      ${state.files.length ? `<ul class="file-list">${state.files.map(f => `
+        <li>
+          <span class="name" title="${esc(f.file.name)}">${esc(f.file.name)}</span>
+          <span class="tag ${f.kind === "tx" ? "tx" : f.kind === "usage" ? "usage" : "bad"}">${esc(f.note || "Reading…")}</span>
+          <button class="remove" data-remove="${f.id}" aria-label="Remove ${esc(f.file.name)}">×</button>
+        </li>`).join("")}</ul>` : ""}
+      <div class="upload-actions" style="margin-top:${state.files.length ? 0 : 20}px">
+        <button class="btn primary" id="build" ${ready ? "" : "disabled"}>Build dashboard</button>
+        <span class="hint">${esc(hint)}</span>
+      </div>
+    </section>
+    <aside class="library" id="library" aria-label="Saved dashboards"></aside>
+    </div>`;
+  const upc = $("#upCustomer"); if (upc) upc.oninput = e => { state.uploadCustomer = e.target.value; };
+  renderLibrary();
+
+  const drop = $("#drop"), input = $("#fileInput");
+  $("#pick").onclick = () => input.click();
+  input.onchange = () => addFiles(input.files);
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+  document.querySelectorAll("[data-remove]").forEach(b => b.onclick = () => {
+    state.files = state.files.filter(f => f.id !== +b.dataset.remove); renderUpload();
+  });
+  $("#build").onclick = build;
+  if (state.apiMode) wireCustomerSearch();
+}
+
+async function addFiles(list) {
+  const entries = [...list].map(file => ({ id: ++fileSeq, file, kind: null, note: null }));
+  state.files.push(...entries); renderUpload();
+  await Promise.all(entries.map(detectFile)); renderUpload();
+}
+
+function usageDiag() {
+  return state.files.filter(f => f.kind === "usage").map(f => {
+    const s = f.stats || {};
+    const sample = (s.samples || [])[0] || [];
+    const pairs = f.hdr.headers.slice(0, 16).map((h, i) => [h, sample[i]]).filter(([h]) => h != null);
+    return `<details class="diag" open><summary>${esc(f.file.name)}</summary>
+      <p>${fmtN(s.rows)} rows read. Skipped: ${fmtN(s.noSession)} with no session ID, ${fmtN(s.zeroMins)} with zero billed minutes, ${fmtN(s.badDate)} with an unreadable date, ${fmtN(s.badTime)} with an unreadable start time.</p>
+      ${pairs.length ? `<p>Columns and the first row of data:</p><table class="stats-table"><tbody>${pairs.map(([h, v]) => `<tr><td>${esc(h)}</td><td>${esc(v == null || v === "" ? "(blank)" : String(v).slice(0, 60))}</td></tr>`).join("")}</tbody></table>` : ""}
+    </details>`;
+  }).join("");
+}
+
+function build() {
+  try {
+    const txEntry = state.files.find(f => f.kind === "tx");
+    const tx = txEntry ? parseTransactions(txEntry) : null;
+    const { rows: usage, dupes } = dedupeUsage(state.files.filter(f => f.kind === "usage").flatMap(parseUsage));
+    const timelineRaw = state.files.filter(f => f.kind === "usage").flatMap(f => f.timeline || []);
+    const data = buildData(tx, usage, timelineRaw);
+    data.usageFiles = state.files.filter(f => f.kind === "usage").length;
+    data.dupesRemoved = dupes;
+    if (!state.pendingCustomer && state.uploadCustomer && state.uploadCustomer.trim()) data.customer = state.uploadCustomer.trim();
+    state.version = null;
+    if (state.pendingCustomer) { data.customer = state.pendingCustomer; data.source = "bigquery"; data.accountSnapshot = state.pendingAccounts && state.pendingAccounts.length ? state.pendingAccounts : null; }
+    state.pendingAccounts = null; state.snap = null;
+    state.pendingCustomer = null;
+    if (!usage.length && !timelineRaw.length) {
+      renderUpload("No sessions could be read from the Usage reports. The details below show what was found in each file.", usageDiag());
+      return;
+    }
+    if (usage.length && !data.joined.length) {
+      renderUpload(`None of the ${usage.length} usage rows matched the Transaction report. Check that these reports are for the same organization and date range.`);
+      return;
+    }
+    state.baseData = data; state.tz = data.source === "bigquery" ? browserZone() : ""; applyTz(); state.groups = loadGroups(); state.eventGroup = ""; state.excluded = loadExcluded(); state.picked = new Set(); state.tab = data.joined.length ? "overview" : "timeline"; state.tlDay = null; state.selectedEvent = null; state.workspace = ""; state.range = { fromDate: "", fromTime: "", toDate: "", toTime: "" };
+    state.table = { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" };
+    renderDashboard();
+  } catch (e) {
+    console.error(e); renderUpload("Something in these files couldn’t be processed: " + e.message);
+  }
+}
+
+/* ============================================================
+   Rendering: dashboard shell
+   ============================================================ */
+function renderDashboard() {
+  const d = state.data;
+  $("#restart").hidden = state.readOnly;
+  $("#saveBtn").hidden = state.readOnly;
+  $("#shareBtn").hidden = state.readOnly || !state.db;
+  $("#exportBtn").hidden = false;
+  $("#unitToggle").hidden = false;
+  document.querySelectorAll("[data-unit]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.unit === state.unit)));
+  $("#customer").textContent = d.customer;
+  $("#range").textContent = d.range ? `${prettyDate(d.range[0])} to ${prettyDate(d.range[1])}` : "";
+  const tabs = [["overview", "Overview"], ...((d.accountSnapshot && d.accountSnapshot.length) || (d.hasTx && d.transactions) ? [["accounts", "Accounts"]] : []), ["events", "Events"], ["sessions", "Session detail"], ["timeline", "Event timeline"]];
+  if (state.tab === "accounts" && !((d.accountSnapshot && d.accountSnapshot.length) || (d.hasTx && d.transactions))) state.tab = "overview";
+  $("#app").innerHTML = `
+    <div class="band">
+    <div class="masthead">
+      <div>
+        <h1>${esc(d.customer || "Usage dashboard")}</h1>
+        <p class="meta">${d.range ? `Sessions from ${esc(prettyDate(d.range[0]))} to ${esc(prettyDate(d.range[1]))}.` : ""}
+          ${state.version ? ` Saved ${esc(fmtStamp(state.version.savedAt))}.` : state.readOnly ? "" : ` <span class="unsaved">Not saved yet</span>`}</p>
+      </div>
+      <label class="ver" id="verWrap" hidden>Saved versions <select id="verSel"></select></label>
+    </div>
+    <nav class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</nav>
+    </div>
+    <div class="content">
+    ${state.readOnly ? `<div class="notice info">${esc(state.sharedInfo)}. This is a read-only snapshot. Use the filters and tabs to explore it.</div>` : ""}
+    ${d.unmatched.length ? `<details class="notice"><summary>${d.unmatched.length} usage ${d.unmatched.length === 1 ? "row" : "rows"} couldn’t be matched to the Transaction report and ${d.unmatched.length === 1 ? "is" : "are"} left out</summary>
+      <ul>${d.unmatched.slice(0, 50).map(u => `<li>${esc(u.sessionId)}, ${esc(prettyDate(u.date))} at ${fmtClock(u.startSec)}, ${esc(u.account)}, ${fmtM(u.mins)} ${us_()}</li>`).join("")}</ul></details>` : ""}
+    ${d.hasTx || (d.accountSnapshot && d.accountSnapshot.length) ? "" : `<div class="notice">${d.source === "bigquery" ? "Remaining balances need an Admin Transaction report. Add one on the customer search screen to include them." : "Built from Usage reports only, so remaining balances aren’t shown. Load new reports with the Admin Transaction report to add them."}</div>`}
+    ${removedNoticeHtml()}
+    ${d.source === "bigquery" ? `<p class="hint sources">Live data from BigQuery: ${fmtN(d.totalUsage)} billed sessions${d.dupesRemoved ? ` (${fmtN(d.dupesRemoved)} duplicate ${d.dupesRemoved === 1 ? "copy" : "copies"} of the same sessions removed)` : ""}${d.hasTx ? `, plus an uploaded Transaction report (${fmtN(d.joined.length)} matched a charge)` : ""}.</p>` : d.usageFiles ? `<p class="hint sources">Built from ${d.hasTx ? `a Transaction report (${fmtN(d.txDebits)} session charges) and ` : ""}${d.usageFiles} Usage ${d.usageFiles === 1 ? "report" : "reports"}.${d.hasTx ? ` ${fmtN(d.joined.length)} of ${fmtN(d.totalUsage)} billed sessions matched a charge.` : ""}</p>` : ""}
+    ${filterBar(d)}
+    <div id="view"></div>
+    </div>`;
+  fillVersionPicker();
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { state.tab = b.dataset.tab; renderDashboard(); });
+  wireRemovedNotice();
+  const ws = $("#wsSel");
+  if (ws) ws.onchange = e => setWorkspace(e.target.value);
+  const setRange = (k, v) => { state.range[k] = v; state.selectedEvent = null; state.table.page = 0; renderDashboard(); };
+  $("#rFromD").onchange = e => setRange("fromDate", e.target.value);
+  $("#rFromT").onchange = e => setRange("fromTime", e.target.value);
+  $("#rToD").onchange = e => setRange("toDate", e.target.value);
+  $("#rToT").onchange = e => setRange("toTime", e.target.value);
+  $("#rPreset").onchange = e => { if (e.target.value) { state.range = presetRange(e.target.value); state.selectedEvent = null; state.table.page = 0; renderDashboard(); } };
+  const rc = $("#rClear");
+  if (rc) rc.onclick = () => { state.range = { fromDate: "", fromTime: "", toDate: "", toTime: "" }; renderDashboard(); };
+  const eg = $("#egSel"); if (eg) eg.onchange = e => { state.eventGroup = e.target.value; state.selectedEvent = null; state.table.page = 0; renderDashboard(); };
+  const tzs = $("#tzSel"); if (tzs) tzs.onchange = e => { state.tz = e.target.value; applyTz(); state.tlDay = null; renderDashboard(); };
+  Object.values(charts).forEach(c => c.destroy()); for (const k in charts) delete charts[k];
+  if (state.tab !== "timeline" && state.tab !== "accounts" && !activeRows().length) {
+    $("#view").innerHTML = d.joined.length
+      ? `<div class="panel empty">No sessions ran in this window. Widen the dates or clear the filters to see more.</div>`
+      : `<div class="panel empty">These reports have no billed minutes, so only the Event timeline tab has data.</div>`;
+    return;
+  }
+  ({ overview: renderOverview, events: renderEvents, sessions: renderSessions, timeline: renderTimeline, accounts: renderAccounts })[state.tab]();
+}
+
+function dayToStr(n) { const x = new Date(n * 86400000); return ymd(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate()); }
+function presetRange(v) {
+  const last = dayNum(state.data.range[1]);
+  if (v.startsWith("d")) return { fromDate: dayToStr(last - (+v.slice(1) - 1)), fromTime: "", toDate: dayToStr(last), toTime: "" };
+  const [y, m] = v.slice(2).split("-").map(Number);
+  return { fromDate: ymd(y, m, 1), fromTime: "", toDate: dayToStr(Date.UTC(y, m, 0) / 86400000), toTime: "" };
+}
+function rangeActive() { const r = state.range; return Boolean(r.fromDate || r.toDate); }
+function filterBar(d) {
+  const evName = currentGroup()?.name || "";
+  const r = state.range, min = d.range[0], max = d.range[1];
+  const months = [...new Set(d.joined.map(x => x.date.slice(0, 7)))].sort().reverse();
+  const fmtEnd = (date, time) => date ? `${prettyDate(date)}${time ? " at " + fmtClock(parseTime(time)) : ""}` : "";
+  let summary = "";
+  if (rangeActive()) {
+    const rows = activeRows();
+    const when = r.fromDate && r.toDate ? `between ${fmtEnd(r.fromDate, r.fromTime)} and ${fmtEnd(r.toDate, r.toTime)}` : r.fromDate ? `from ${fmtEnd(r.fromDate, r.fromTime)} on` : `up to ${fmtEnd(r.toDate, r.toTime)}`;
+    summary = `<p class="hint filter-summary">Showing ${fmtN(rows.length)} ${rows.length === 1 ? "session" : "sessions"} that ran ${when}${evName ? ` for ${esc(evName)}` : ""}${state.workspace ? ` in ${esc(state.workspace)}` : ""}. Sessions that overlap the window are included.</p>`;
+  } else if (state.workspace || evName) {
+    summary = `<p class="hint filter-summary">Showing ${[evName && esc(evName), state.workspace && esc(state.workspace)].filter(Boolean).join(" in ")} only.</p>`;
+  }
+  return `<div class="toolbar filters">
+    ${d.hasWorkspace ? `<label>Workspace <select id="wsSel"><option value="">All workspaces</option>${[...new Set(d.joined.map(x => x.workspace).filter(Boolean))].sort().map(w => `<option ${state.workspace === w ? "selected" : ""}>${esc(w)}</option>`).join("")}</select></label>` : ""}
+    ${state.groups.length ? `<label>Event <select id="egSel"><option value="">All events</option>${state.groups.map(g => `<option value="${g.id}" ${state.eventGroup === g.id ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select></label>` : ""}
+    <label>From <input type="date" id="rFromD" value="${r.fromDate}" min="${min}" max="${max}"><input type="time" id="rFromT" value="${r.fromTime}" aria-label="From time (optional)"></label>
+    <label>To <input type="date" id="rToD" value="${r.toDate}" min="${min}" max="${max}"><input type="time" id="rToT" value="${r.toTime}" aria-label="To time (optional)"></label>
+    <label>Quick range <select id="rPreset"><option value="">Choose a range</option>
+      <option value="d7">Last 7 days of data</option><option value="d30">Last 30 days of data</option><option value="d90">Last 90 days of data</option>
+      ${months.map(m => `<option value="m:${m}">${monthLabel(m)}</option>`).join("")}
+    </select></label>
+    ${d.tzConvertible ? `<label>Time zone <select id="tzSel">${tzOptions(d)}</select></label>` : ""}
+    ${rangeActive() ? `<button class="btn" id="rClear">Clear dates</button>` : ""}
+  </div>${summary}`;
+}
+
+function setWorkspace(w) {
+  state.workspace = w; state.selectedEvent = null;
+  Object.assign(state.table, { page: 0, account: "", session: "" });
+  renderDashboard();
+}
+
+function chartDefaults() {
+  Chart.defaults.font.family = css("--font");
+  Chart.defaults.color = css("--muted");
+  Chart.defaults.borderColor = css("--line");
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+}
+
+/* ============================================================
+   Overview
+   ============================================================ */
+function renderOverview() {
+  const d = state.data, rows = activeRows();
+  const totalMins = rows.reduce((a, r) => a + r.mins, 0);
+  const totalAtt = rows.reduce((a, r) => a + r.attendees, 0);
+  const events = eventsByTitle(rows).length;
+  const snapAcc = d.accountSnapshot || [];
+  const balances = snapAcc.length
+    ? snapAcc.slice().sort((a, b) => a.Available_Mins - b.Available_Mins).slice(0, 6).map(a => [a.portal_account_name, { balance: a.Available_Mins, email: a.Owner_Email }])
+    : Object.entries(d.balances);
+
+  $("#view").innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmtM(totalMins)}</div><div class="l">${U_()} used</div></div>
+      <div class="kpi"><div class="v">${fmtN(rows.length)}</div><div class="l">Session instances</div></div>
+      <div class="kpi"><div class="v">${fmtN(totalAtt)}</div><div class="l">Total attendees</div></div>
+      <div class="kpi"><div class="v">${fmtN(events)}</div><div class="l">Unique events</div></div>
+    </div>
+    ${balances.length ? `<h2 class="section">${snapAcc.length ? `Lowest remaining ${u_()}, ${fmtN(snapAcc.length)} accounts in total (see the Accounts tab)` : `Remaining ${u_()} by account`}</h2>
+    <div class="balances">${balances.map(([name, b]) => `
+      <div class="balance"><div class="acct">${esc(name)}</div><div class="email">${esc(b.email || "")}</div>
+      <div class="left ${b.balance < 0 ? "neg" : ""}">${fmtM(b.balance)} <small>${u_()} left</small></div></div>`).join("")}</div>` : ""}
+    ${d.hasWorkspace && !state.workspace ? workspaceTable(rows, totalMins) : ""}
+    <div class="grid2">
+      <div class="panel"><h3>${U_()} by month</h3><div class="chart-box"><canvas id="cMonth"></canvas></div></div>
+      <div class="panel"><h3>${U_()} by account</h3><div class="chart-box"><canvas id="cAcct"></canvas></div></div>
+      <div class="panel"><h3>Attendees by language</h3><div class="chart-box" id="langBox"><canvas id="cLang"></canvas></div></div>
+      <div class="panel"><h3>Sessions and attendees by month</h3><div class="chart-box"><canvas id="cSess"></canvas></div></div>
+      ${d.hasConnection ? `<div class="panel"><h3>${U_()} by connection</h3><div class="chart-box"><canvas id="cConn"></canvas></div></div>` : ""}
+    </div>`;
+  document.querySelectorAll("[data-ws]").forEach(b => b.onclick = () => setWorkspace(b.dataset.ws));
+
+  chartDefaults();
+  const blue = css("--blue");
+  const rDates = rows.map(r => r.date).sort();
+  const months = rDates.length ? monthsBetween(rDates[0].slice(0, 7), rDates[rDates.length - 1].slice(0, 7)) : [];
+  const mMins = sumBy(rows, r => r.date.slice(0, 7), r => r.mins);
+  const mSess = sumBy(rows, r => r.date.slice(0, 7), () => 1);
+  const mAtt = sumBy(rows, r => r.date.slice(0, 7), r => r.attendees);
+  const labels = months.map(monthLabel);
+  const tip = { callbacks: { label: c => `${c.dataset.label || c.label}: ${fmtCV(c.raw)}` } };
+
+  charts.month = new Chart($("#cMonth"), {
+    type: "bar",
+    data: { labels, datasets: [{ label: U_(), data: months.map(m => cv(mMins[m] || 0)), backgroundColor: blue, borderRadius: 4 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+  });
+
+  const acct = Object.entries(sumBy(rows, r => r.account, r => r.mins)).sort((a, b) => b[1] - a[1]);
+  charts.acct = new Chart($("#cAcct"), {
+    type: "doughnut",
+    data: { labels: acct.map(a => a[0]), datasets: [{ data: acct.map(a => cv(a[1])), backgroundColor: acct.map((_, i) => ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]), borderColor: css("--surface"), borderWidth: 2 }] },
+    options: { maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "right" }, tooltip: tip } }
+  });
+
+  const langs = Object.entries(langTotals(rows)).sort((a, b) => b[1] - a[1]);
+  $("#langBox").style.height = Math.max(280, langs.length * 28 + 40) + "px";
+  charts.lang = new Chart($("#cLang"), {
+    type: "bar",
+    data: { labels: langs.map(l => l[0]), datasets: [{ label: "Attendees", data: langs.map(l => l[1]), backgroundColor: langs.map(l => langColor(l[0])), borderRadius: 4 }] },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } }, x: { beginAtZero: true } } }
+  });
+
+  if (d.hasConnection) {
+    const conn = Object.entries(sumBy(rows, r => r.connection || "Not specified", r => r.mins)).sort((a, b) => b[1] - a[1]);
+    charts.conn = new Chart($("#cConn"), {
+      type: "doughnut",
+      data: { labels: conn.map(a => a[0]), datasets: [{ data: conn.map(a => cv(a[1])), backgroundColor: conn.map((_, i) => ACCOUNT_COLORS[(i + 3) % ACCOUNT_COLORS.length]), borderColor: css("--surface"), borderWidth: 2 }] },
+      options: { maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "right" }, tooltip: tip } }
+    });
+  }
+
+  charts.sess = new Chart($("#cSess"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Sessions", data: months.map(m => mSess[m] || 0), backgroundColor: css("--blue-2"), yAxisID: "y", borderRadius: 4 },
+      { label: "Attendees", data: months.map(m => mAtt[m] || 0), backgroundColor: "#129737", yAxisID: "y1", borderRadius: 4 }
+    ] },
+    options: { maintainAspectRatio: false, plugins: { tooltip: tip }, scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, position: "left", title: { display: true, text: "Sessions" } },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Attendees" } }
+    } }
+  });
+}
+
+function workspaceTable(rows, totalMins) {
+  const m = {};
+  rows.forEach(r => {
+    const k = r.workspace || "No workspace";
+    const w = (m[k] ||= { name: k, mins: 0, sessions: 0, attendees: 0, titles: new Set() });
+    w.mins += r.mins; w.sessions++; w.attendees += r.attendees; w.titles.add(r.title);
+  });
+  const list = Object.values(m).sort((a, b) => b.mins - a.mins);
+  return `<div class="panel" style="margin-bottom:20px"><h3>By workspace</h3>
+    <div class="table-wrap" style="border:0"><table class="data"><thead><tr>
+      <th>Workspace</th><th class="num">${U_()}</th><th class="num">Share</th><th class="num">Sessions</th><th class="num">Attendees</th><th class="num">Unique events</th><th></th>
+    </tr></thead><tbody>${list.map(w => `<tr>
+      <td>${esc(w.name)}</td><td class="num">${fmtM(w.mins)}</td>
+      <td class="num"><span class="share"><span style="width:${totalMins ? (w.mins / totalMins) * 100 : 0}%"></span></span>${totalMins ? Math.round((w.mins / totalMins) * 100) : 0}%</td>
+      <td class="num">${fmtN(w.sessions)}</td><td class="num">${fmtN(w.attendees)}</td><td class="num">${fmtN(w.titles.size)}</td>
+      <td>${w.name !== "No workspace" ? `<button class="btn" data-ws="${esc(w.name)}" style="padding:4px 10px">View</button>` : ""}</td>
+    </tr>`).join("")}</tbody></table></div></div>`;
+}
+
+/* ============================================================
+   Events
+   ============================================================ */
+function renderEvents() {
+  const rows = activeRows();
+  const events = eventsByTitle(rows);
+  const sorters = {
+    minutes: (a, b) => b.minutes - a.minutes, attendees: (a, b) => b.attendees - a.attendees,
+    instances: (a, b) => b.instances - a.instances, name: (a, b) => a.title.localeCompare(b.title)
+  };
+  events.sort(sorters[state.eventSort]);
+  const sel = events.find(e => e.title === state.selectedEvent);
+  const groupAggs = state.groups.map(g => groupAgg(g, rows)).filter(g => g.instances).sort(sorters[state.eventSort]);
+  const selGroup = groupAggs.find(g => "group:" + g.id === state.selectedEvent);
+  const suggestions = suggestGroups();
+
+  $("#view").innerHTML = `
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="v">${fmtN(events.length)}</div><div class="l">Unique events</div></div>
+      <div class="kpi"><div class="v">${fmtM(rows.reduce((a, r) => a + r.mins, 0))}</div><div class="l">${U_()} used</div></div>
+      <div class="kpi"><div class="v">${fmtN(rows.reduce((a, r) => a + r.attendees, 0))}</div><div class="l">Total attendees</div></div>
+    </div>
+    <div class="toolbar">
+      <label>Sort by
+        <select id="evSort">
+          ${[["minutes",U_()],["attendees","Attendees"],["instances","Times run"],["name","Name (A to Z)"]].map(([k, l]) => `<option value="${k}" ${state.eventSort === k ? "selected" : ""}>${l}</option>`).join("")}
+        </select>
+      </label>
+      <span class="hint">Sessions are grouped by title. Select one for its language breakdown.</span>
+      ${state.readOnly ? "" : `<button class="btn" id="newGroup">Group sessions into an event</button>`}
+    </div>
+    ${sel ? drillHtml(sel) : selGroup ? groupDrillHtml(selGroup) : ""}
+    ${groupsSectionHtml(groupAggs, suggestions)}
+    <div class="events">${events.map(e => eventCard(e)).join("")}</div>`;
+
+  $("#evSort").onchange = e => { state.eventSort = e.target.value; renderDashboard(); };
+  document.querySelectorAll("[data-event]").forEach(b => b.onclick = () => {
+    state.selectedEvent = state.selectedEvent === b.dataset.event ? null : b.dataset.event;
+    renderDashboard();
+    if (state.selectedEvent) $(".drill")?.scrollIntoView({ block: "nearest" });
+  });
+  const close = $("#closeDrill"); if (close) close.onclick = () => { state.selectedEvent = null; renderDashboard(); };
+  wireGroupControls(suggestions);
+
+  const dt = sel || selGroup;
+  if (dt) {
+    chartDefaults();
+    const langs = Object.entries(dt.languages).sort((a, b) => b[1] - a[1]);
+    charts.drill = new Chart($("#cDrill"), {
+      type: "doughnut",
+      data: { labels: langs.map(l => l[0]), datasets: [{ data: langs.map(l => l[1]), backgroundColor: langs.map(l => langColor(l[0])), borderColor: css("--surface"), borderWidth: 2 }] },
+      options: { maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "bottom" } } }
+    });
+  }
+}
+function langBar(languages) {
+  const langs = Object.entries(languages).sort((a, b) => b[1] - a[1]);
+  const total = langs.reduce((a, l) => a + l[1], 0) || 1;
+  return {
+    bar: `<div class="langbar" aria-hidden="true">${langs.map(([l, v]) => `<span style="width:${(v / total) * 100}%;background:${langColor(l)}" title="${esc(l)}: ${v}"></span>`).join("")}</div>`,
+    legend: `<div class="legend">${langs.map(([l, v]) => `<span><i style="background:${langColor(l)}"></i>${esc(l)} ${fmtN(v)}</span>`).join("")}</div>`
+  };
+}
+function eventCard(e) {
+  const lb = langBar(e.languages);
+  return `<button class="event" data-event="${esc(e.title)}" aria-expanded="${state.selectedEvent === e.title}">
+    <span class="t">${esc(e.title)}</span>
+    <span class="stats"><span><b>${fmtM(e.minutes)}</b> ${us_()}</span><span><b>${fmtN(e.attendees)}</b> attendees</span><span><b>${e.instances}</b> ${e.instances === 1 ? "run" : "runs"}</span></span>
+    ${Object.keys(e.languages).length ? lb.bar + lb.legend : `<span class="hint">No attendee language data</span>`}
+  </button>`;
+}
+function drillHtml(e) {
+  return `<section class="drill">
+    <div class="drill-head"><h3>${esc(e.title)}</h3><button class="btn" id="closeDrill">Close</button></div>
+    <div class="drill-body">
+      <div class="chart-box" style="height:280px"><canvas id="cDrill"></canvas></div>
+      <table class="stats-table"><tbody>
+        <tr><td>${U_()} used</td><td>${fmtM(e.minutes)}</td></tr>
+        <tr><td>Total attendees</td><td>${fmtN(e.attendees)}</td></tr>
+        <tr><td>Times run</td><td>${fmtN(e.instances)}</td></tr>
+        <tr><td>Average attendees per run</td><td>${(e.attendees / e.instances).toFixed(1)}</td></tr>
+        <tr><td>Average ${u_()} per run</td><td>${fmtM(e.minutes / e.instances)}</td></tr>
+        <tr><td>Languages used</td><td>${Object.keys(e.languages).length}</td></tr>
+      </tbody></table>
+    </div>
+  </section>`;
+}
+
+/* ============================================================
+   Session detail
+   ============================================================ */
+const ALL_COLS = [
+  { key: "ts", label: "Date", fmt: r => prettyDate(r.date) },
+  { key: "startSec", label: "Start", fmt: r => fmtClock(r.startSec) },
+  { key: "sessionId", label: "Session ID" },
+  { key: "title", label: "Title", cls: "wrap" },
+  { key: "account", label: "Account" },
+  { key: "workspace", label: "Workspace" },
+  { key: "connection", label: "Connection" },
+  { key: "durSecs", label: "Duration", fmt: r => fmtDuration(r.durSecs), num: true },
+  { key: "mins", label: "Minutes", fmt: r => fmtM(r.mins), num: true },
+  { key: "attendees", label: "Attendees", fmt: r => fmtN(r.attendees), num: true },
+  { key: "languagesStr", label: "Languages", cls: "wrap" },
+  { key: "label", label: "Label" },
+  { key: "balanceAfter", label: "Balance after", fmt: r => r.balanceAfter == null ? "" : fmtM(r.balanceAfter), num: true }
+];
+function filteredRows() {
+  const t = state.table, q = t.q.trim().toLowerCase();
+  let rows = activeRows().filter(r =>
+    (!t.account || r.account === t.account) &&
+    (!t.session || r.sessionId === t.session) &&
+    (!t.from || r.date >= t.from) && (!t.to || r.date <= t.to) &&
+    (!q || [r.sessionId, r.title, r.account, r.workspace, r.connection, r.label, r.languagesStr, r.date].join(" ").toLowerCase().includes(q)));
+  const k = t.sortKey;
+  rows.sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""))) * t.dir; });
+  return rows;
+}
+function renderSessions() {
+  const t = state.table, all = activeRows();
+  const accounts = [...new Set(all.map(r => r.account))].sort();
+  const sessions = [...new Map(all.map(r => [r.sessionId, r.title])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  $("#view").innerHTML = `
+    <div class="toolbar">
+      <label>Account <select id="fAcct"><option value="">All accounts</option>${accounts.map(a => `<option ${t.account === a ? "selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+      <label>Session <select id="fSess"><option value="">All sessions</option>${sessions.map(([id, title]) => `<option value="${esc(id)}" ${t.session === id ? "selected" : ""}>${esc(id)}: ${esc(title)}</option>`).join("")}</select></label>
+      <input type="search" id="fQ" placeholder="Search sessions" value="${esc(t.q)}" aria-label="Search sessions">
+      <button class="btn" id="fClear">Clear filters</button>
+    </div>
+    <div id="tableArea"></div>`;
+  const update = (k, v) => { state.table[k] = v; state.table.page = 0; drawTable(); };
+  $("#fAcct").onchange = e => update("account", e.target.value);
+  $("#fSess").onchange = e => update("session", e.target.value);
+  $("#fQ").oninput = e => update("q", e.target.value);
+  $("#fClear").onclick = () => { Object.assign(state.table, { account: "", session: "", from: "", to: "", q: "", page: 0 }); renderDashboard(); };
+  drawTable();
+}
+function drawTable() {
+  const t = state.table, rows = filteredRows();
+  const d = state.data;
+  const COLS = ALL_COLS.filter(c => !((c.key === "balanceAfter" && !d.hasTx) || (c.key === "workspace" && !d.hasWorkspace) || (c.key === "connection" && !d.hasConnection)));
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  t.page = Math.min(t.page, pages - 1);
+  const slice = rows.slice(t.page * PAGE_SIZE, (t.page + 1) * PAGE_SIZE);
+  const tot = rows.reduce((a, r) => a + r.mins, 0);
+  const edit = !state.readOnly;
+  const picked = state.picked || (state.picked = new Set());
+  const allPicked = slice.length && slice.every(r => picked.has(r.uid));
+  $("#tableArea").innerHTML = `
+    ${edit && picked.size ? `<div class="bulk-bar"><span>${picked.size} ${picked.size === 1 ? "session" : "sessions"} selected</span><button class="btn danger" id="removePicked">Remove selected</button><button class="btn" id="clearPicked">Clear selection</button></div>` : ""}
+    <div class="table-wrap"><table class="data">
+      <thead><tr>${edit ? `<th class="pick-col"><input type="checkbox" id="pickAll" ${allPicked ? "checked" : ""} aria-label="Select all sessions on this page"></th>` : ""}${COLS.map(c => `<th class="${c.num ? "num" : ""}" aria-sort="${t.sortKey === c.key ? (t.dir > 0 ? "ascending" : "descending") : "none"}"><button data-sort="${c.key}">${c.key === "startSec" && state.data.zoneLabel ? `Start (${esc(state.data.zoneLabel)})` : c.key === "mins" ? U_() : c.label}${t.sortKey === c.key ? (t.dir > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("")}${edit ? "<th></th>" : ""}</tr></thead>
+      <tbody>${slice.length ? slice.map(r => `<tr class="${picked.has(r.uid) ? "row-sel" : ""}">${edit ? `<td class="pick-col"><input type="checkbox" class="pick-row" data-uid="${esc(r.uid)}" ${picked.has(r.uid) ? "checked" : ""} aria-label="Select ${esc(r.sessionId)}"></td>` : ""}${COLS.map(c => `<td class="${c.num ? "num" : ""} ${c.cls || ""}">${esc(c.fmt ? c.fmt(r) : r[c.key])}</td>`).join("")}${edit ? `<td><button class="remove-row" data-remove-uid="${esc(r.uid)}" aria-label="Remove session ${esc(r.sessionId)}" title="Remove this session">Remove</button></td>` : ""}</tr>`).join("") : `<tr><td colspan="${COLS.length + (edit ? 2 : 0)}" class="empty">No sessions match these filters. Clear filters to see everything.</td></tr>`}</tbody>
+    </table></div>
+    <div class="pager">
+      <span>${fmtN(rows.length)} sessions, ${fmtM(tot)} ${u_()}</span>
+      <span><button class="btn" id="prev" ${t.page === 0 ? "disabled" : ""}>Previous</button>
+      Page ${t.page + 1} of ${pages}
+      <button class="btn" id="next" ${t.page >= pages - 1 ? "disabled" : ""}>Next</button></span>
+    </div>`;
+  document.querySelectorAll("[data-sort]").forEach(b => b.onclick = () => {
+    const k = b.dataset.sort;
+    if (t.sortKey === k) t.dir *= -1; else { t.sortKey = k; t.dir = ["ts", "mins", "attendees", "durSecs", "balanceAfter"].includes(k) ? -1 : 1; }
+    drawTable();
+  });
+  $("#prev").onclick = () => { t.page--; drawTable(); };
+  $("#next").onclick = () => { t.page++; drawTable(); };
+  if (!edit) return;
+  document.querySelectorAll("[data-remove-uid]").forEach(b => b.onclick = () => { picked.delete(b.dataset.removeUid); removeSessions([b.dataset.removeUid]); });
+  document.querySelectorAll(".pick-row").forEach(cb => cb.onchange = () => { cb.checked ? picked.add(cb.dataset.uid) : picked.delete(cb.dataset.uid); drawTable(); });
+  const pa = $("#pickAll"); if (pa) pa.onchange = () => { slice.forEach(r => pa.checked ? picked.add(r.uid) : picked.delete(r.uid)); drawTable(); };
+  const rp = $("#removePicked"); if (rp) rp.onclick = () => removeSessions([...picked]);
+  const cp = $("#clearPicked"); if (cp) cp.onclick = () => { picked.clear(); drawTable(); };
+}
+
+/* ============================================================
+   Event timeline
+   ============================================================ */
+const TZ_OFFSETS = { UTC: 0, GMT: 0, EDT: -4, EST: -5, CDT: -5, CST: -6, MDT: -6, MST: -7, PDT: -7, PST: -8, AKDT: -8, AKST: -9, HST: -10, BST: 1, CET: 1, CEST: 2, EET: 2, EEST: 3, JST: 9, SGT: 8, AEST: 10, AEDT: 11 };
+// Puts every usage row in the most common time zone, then drops copies of the same session
+// (same session ID, same real start time, same duration). BigQuery can hold one session twice
+// when it was scraped in different time zones, e.g. 8:45 PM EDT and 5:45 PM PDT.
+function dedupeUsage(rows) {
+  const counts = {};
+  rows.forEach(u => { counts[u.tz] = (counts[u.tz] || 0) + 1; });
+  const zone = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  const zOff = TZ_OFFSETS[String(zone).toUpperCase()];
+  const seen = new Set(), out = [];
+  for (const u of rows) {
+    let loc = dayNum(u.date) * 86400 + u.startSec;
+    const o = TZ_OFFSETS[String(u.tz || "").toUpperCase()];
+    if (u.tz !== zone && o != null && zOff != null) {
+      loc += (zOff - o) * 3600;
+      const dn = Math.floor(loc / 86400);
+      u.date = dayToStr(dn); u.startSec = loc - dn * 86400; u.tz = zone;
+      u.endAbsMin = Math.floor(loc / 60) + Math.floor(u.durSecs / 60);
+    }
+    const k = `${u.sessionId}|${Math.floor(loc / 60)}|${u.durSecs}`;
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(u);
+  }
+  return { rows: out, dupes: rows.length - out.length };
+}
+function buildTimeline(raw) {
+  const counts = {};
+  raw.forEach(x => { counts[x.tz] = (counts[x.tz] || 0) + 1; });
+  const zone = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  const zOff = TZ_OFFSETS[zone.toUpperCase()];
+  const seen = new Set(), items = [];
+  let unconverted = 0;
+  for (const x of raw) {
+    let shift = 0;
+    if (x.tz !== zone) {
+      const o = TZ_OFFSETS[String(x.tz).toUpperCase()];
+      if (o != null && zOff != null) shift = (zOff - o) * 3600; else unconverted++;
+    }
+    const start = dayNum(x.date) * 86400 + x.startSec + shift;
+    // Same session at the same real moment = one session, even if stored in two time zones
+    const k = `${x.sessionId}|${Math.floor(start / 60)}|${x.durSecs}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    items.push({ ...x, uid: `${x.sessionId}|${x.date}|${x.startSec}`, start, end: start + x.durSecs });
+  }
+  return { items, zone, unconverted };
+}
+function fmtDurLong(sec) {
+  sec = Math.round(sec);
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
+  return [h ? `${h} hr` : "", m ? `${m} min` : "", s || (!h && !m) ? `${s} sec` : ""].filter(Boolean).join(" ");
+}
+function fmtHour(h) { h = h % 24; return h === 0 ? "12 AM" : h === 12 ? "12 PM" : h < 12 ? `${h} AM` : `${h - 12} PM`; }
+function fmtAbs(s) { return { day: dayToStr(Math.floor(s / 86400)), clock: fmtClock(((s % 86400) + 86400) % 86400) }; }
+function mergeIntervals(xs, d0, d1) {
+  const iv = xs.map(x => [Math.max(x.start, d0), Math.min(x.end, d1)]).filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const [a, b] of iv) { const last = out[out.length - 1]; if (last && a <= last[1]) last[1] = Math.max(last[1], b); else out.push([a, b]); }
+  return out;
+}
+function timelineItems() {
+  let items = state.data.timeline?.items || [];
+  if (state.excluded?.size) items = items.filter(x => !state.excluded.has(x.uid));
+  if (state.workspace) items = items.filter(x => x.workspace === state.workspace);
+  const g = currentGroup();
+  if (g) { const set = new Set(g.titles); items = items.filter(x => set.has(x.title)); }
+  return items;
+}
+function timelineDays(items) {
+  const r = state.range, days = {};
+  items.forEach(x => { for (let n = Math.floor(x.start / 86400); n <= Math.floor((x.end - 1) / 86400); n++) days[n] = (days[n] || 0) + 1; });
+  let list = Object.keys(days).map(Number).sort((a, b) => a - b);
+  if (r.fromDate) list = list.filter(n => n >= dayNum(r.fromDate));
+  if (r.toDate) list = list.filter(n => n <= dayNum(r.toDate));
+  return list.map(n => ({ n, count: days[n] }));
+}
+function renderTimeline() {
+  const tl = state.data.timeline || { items: [], zone: "" }, zone = tl.zone;
+  const items = timelineItems(), allDays = timelineDays(items);
+  if (!allDays.length) { $("#view").innerHTML = `<div class="panel empty">No session activity in this window. Widen the dates or clear the filters to see more.</div>`; return; }
+  const limit = state.tlShowAll ? allDays.length : Math.min(allDays.length, 31);
+  const days = allDays.slice(0, limit);
+
+  // Build each day's lanes
+  const blocks = days.map(({ n }) => {
+    const d0 = n * 86400, d1 = d0 + 86400;
+    const dayItems = items.filter(x => x.start < d1 && x.end > d0);
+    const byTitle = {};
+    dayItems.forEach(x => (byTitle[x.title] ||= []).push(x));
+    const lanes = Object.entries(byTitle).map(([title, xs]) => {
+      const merged = mergeIntervals(xs, d0, d1);
+      return { title, xs: xs.sort((a, b) => a.start - b.start), merged, first: merged[0][0], active: merged.reduce((a, [s, e]) => a + e - s, 0) };
+    }).sort((a, b) => a.first - b.first);
+    const ev = [];
+    lanes.forEach(l => l.merged.forEach(([s, e]) => { ev.push([s, 1], [e, -1]); }));
+    ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    let cur = 0, peak = 0, peakAt = d0;
+    ev.forEach(([t, dlt]) => { cur += dlt; if (cur > peak) { peak = cur; peakAt = t; } });
+    return { n, d0, d1, dayItems, lanes, peak, peakAt, total: lanes.reduce((a, l) => a + l.active, 0) };
+  });
+
+  // One shared window so every day lines up
+  let w0 = 0, w1 = 86400;
+  if (state.tlView === "active") {
+    const s = Math.min(...blocks.flatMap(b => b.lanes.map(l => l.merged[0][0] - b.d0)));
+    const e = Math.max(...blocks.flatMap(b => b.lanes.map(l => l.merged[l.merged.length - 1][1] - b.d0)));
+    w0 = Math.max(0, Math.floor(s / 3600) * 3600 - 3600);
+    w1 = Math.min(86400, Math.ceil(e / 3600) * 3600 + 3600);
+    if (w1 - w0 < 7200) { w1 = Math.min(86400, w0 + 7200); w0 = Math.max(0, w1 - 7200); }
+  }
+  const span = w1 - w0, pct = sec => ((sec - w0) / span) * 100;
+  const hours = span / 3600, step = hours <= 8 ? 1 : hours <= 14 ? 2 : 3;
+  let ticks = "", grid = "";
+  for (let s = w0; s <= w1; s += 3600) {
+    const h = s / 3600;
+    grid += `<span class="tl-grid" style="left:${pct(s)}%"></span>`;
+    if (s < w1 && (h - w0 / 3600) % step === 0) ticks += `<span class="tl-tick${s === w0 ? " first" : ""}" style="left:${pct(s)}%">${fmtHour(h)}</span>`;
+  }
+  const describe = x => {
+    const a = fmtAbs(x.start), b = fmtAbs(x.end);
+    return `${x.title}, session ${x.sessionId}: ${prettyDate(a.day)} ${a.clock} to ${b.day !== a.day ? prettyDate(b.day) + " " : ""}${b.clock} ${zone} (${fmtDurLong(x.durSecs)})${x.mins == null ? "" : x.mins ? `, ${fmtM(x.mins)} ${us_()} billed` : `, no ${u_()} billed`}${x.workspace ? `, ${x.workspace}` : ""}`;
+  };
+  state.tlDescribe = [];
+  const allShown = blocks.flatMap(b => b.dayItems);
+  const hasUnbilled = allShown.some(x => x.mins === 0);
+  const hasBilled = allShown.some(x => x.mins == null || x.mins > 0);
+  const titles = new Set(allShown.map(x => x.title));
+
+  const dayHtml = b => `
+    <section class="tl-day">
+      <div class="tl-day-head"><h3>${prettyDate(dayToStr(b.n))}</h3>
+        <span class="hint">${b.lanes.length} ${b.lanes.length === 1 ? "event" : "events"}, ${fmtDurLong(b.total)} active${b.peak > 1 ? `, up to ${b.peak} at once from ${fmtClock(b.peakAt - b.d0)}` : ""}</span></div>
+      <div class="tl-scroll"><div class="tl">
+        <div class="tl-axis"><div class="tl-label-head">Event</div><div class="tl-track tl-ticks">${ticks}</div></div>
+        ${b.lanes.map(l => `<div class="tl-row">
+          <div class="tl-label"><span class="tl-title" title="${esc(l.title)}">${esc(l.title)}</span><span class="tl-sub">${fmtDurLong(l.active)} active</span></div>
+          <div class="tl-track">${grid}${l.xs.map(x => {
+            const i = state.tlDescribe.push(describe(x)) - 1;
+            const s = Math.max(x.start, b.d0) - b.d0, e = Math.min(x.end, b.d1) - b.d0;
+            const cls = ["tl-bar", x.mins === 0 ? "unbilled" : "", x.start < b.d0 ? "from-prev" : "", x.end > b.d1 ? "to-next" : ""].filter(Boolean).join(" ");
+            return `<button class="${cls}" data-i="${i}" style="left:${pct(s)}%;width:${((e - s) / span) * 100}%" aria-label="${esc(state.tlDescribe[i])}"></button>`;
+          }).join("")}</div>
+        </div>`).join("")}
+      </div></div>
+    </section>`;
+
+  $("#view").innerHTML = `
+    <div class="toolbar">
+      <label>Show <select id="tlView"><option value="day" ${state.tlView === "day" ? "selected" : ""}>Full day</option><option value="active" ${state.tlView === "active" ? "selected" : ""}>Active hours only</option></select></label>
+      <span class="hint">Times in ${esc(zone || "the report’s time zone")}, from each session’s start time and real duration. Use the filters above to narrow to an event or dates.</span>
+    </div>
+    <p class="tl-summary">${titles.size} ${titles.size === 1 ? "event" : "events"} across ${allDays.length} ${allDays.length === 1 ? "day" : "days"}.</p>
+    ${tl.unconverted ? `<p class="hint">${tl.unconverted} sessions use a time zone this page can’t convert, so they’re shown in their own local time.</p>` : ""}
+    <div class="panel">
+      ${blocks.map(dayHtml).join("")}
+      ${allDays.length > limit ? `<div class="tl-more"><button class="btn" id="tlMore">Show ${allDays.length - limit} more ${allDays.length - limit === 1 ? "day" : "days"}</button></div>` : ""}
+      <div class="tl-foot">
+        <div class="tl-legend">${hasUnbilled && hasBilled ? `<span><i class="tl-key"></i>${U_()} billed</span>` : ""}${hasUnbilled ? `<span><i class="tl-key unbilled"></i>No ${u_()} billed</span>` : ""}</div>
+        <div id="tlDetail" class="tl-detail" aria-live="polite">Hover over or select a bar to see its exact times.</div>
+      </div>
+    </div>`;
+
+  $("#tlView").onchange = e => { state.tlView = e.target.value; renderDashboard(); };
+  const more = $("#tlMore"); if (more) more.onclick = () => { state.tlShowAll = true; renderDashboard(); };
+  const detail = $("#tlDetail");
+  let pinned = null;
+  document.querySelectorAll(".tl-bar").forEach(b => {
+    const show = () => { detail.textContent = state.tlDescribe[+b.dataset.i]; };
+    b.onmouseenter = show; b.onfocus = show;
+    b.onmouseleave = () => { if (pinned !== null) detail.textContent = state.tlDescribe[pinned]; };
+    b.onclick = () => {
+      document.querySelectorAll(".tl-bar.sel").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel"); pinned = +b.dataset.i; show();
+    };
+  });
+}
+
+/* ============================================================
+   Time zone conversion
+   ============================================================ */
+const TZ_CHOICES = [
+  ["America/New_York", "Eastern (US)"], ["America/Chicago", "Central (US)"], ["America/Denver", "Mountain (US)"],
+  ["America/Phoenix", "Arizona"], ["America/Los_Angeles", "Pacific (US)"], ["America/Anchorage", "Alaska"],
+  ["Pacific/Honolulu", "Hawaii"], ["America/Sao_Paulo", "Brasília"], ["UTC", "UTC"], ["Europe/London", "London"],
+  ["Europe/Paris", "Central Europe"], ["Europe/Athens", "Eastern Europe"], ["Africa/Johannesburg", "South Africa"],
+  ["Asia/Dubai", "Dubai"], ["Asia/Kolkata", "India"], ["Asia/Singapore", "Singapore"], ["Asia/Shanghai", "China"],
+  ["Asia/Tokyo", "Japan"], ["Australia/Sydney", "Sydney"], ["Pacific/Auckland", "New Zealand"]
+];
+const _tzFmt = {};
+function zoneOffset(zone, utcSec) { // seconds to add to UTC to get local time in zone
+  const f = _tzFmt[zone] ||= new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" });
+  const p = {};
+  f.formatToParts(new Date(utcSec * 1000)).forEach(x => { p[x.type] = x.value; });
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) / 1000 - utcSec;
+}
+function zoneAbbr(zone, utcSec) {
+  try { return new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "short" }).formatToParts(new Date(utcSec * 1000)).find(x => x.type === "timeZoneName").value; }
+  catch { return zone; }
+}
+function sourceZone(base) { return base.timeline?.zone || ""; }
+function refUtc(base) {
+  const src = TZ_OFFSETS[sourceZone(base).toUpperCase()] || 0;
+  const last = base.range ? dayNum(base.range[1]) * 86400 + 43200 : Date.now() / 1000;
+  return last - src * 3600;
+}
+// Builds the view of the data in the chosen time zone. The uploaded data stays untouched in state.baseData.
+function convertData(base, target) {
+  const src = sourceZone(base), srcOff = TZ_OFFSETS[src.toUpperCase()];
+  const convertible = srcOff != null;
+  if (!target || !convertible) return { ...base, zoneLabel: src, tzConvertible: convertible };
+  const shift = (localSec) => { const utc = localSec - srcOff * 3600; return utc + zoneOffset(target, utc); };
+  const conv = r => {
+    const loc = shift(dayNum(r.date) * 86400 + r.startSec), dn = Math.floor(loc / 86400);
+    return { ...r, date: dayToStr(dn), startSec: loc - dn * 86400, ts: loc };
+  };
+  const joined = base.joined.map(conv), unmatched = base.unmatched.map(conv);
+  const items = (base.timeline?.items || []).map(x => { const s = shift(x.start); return { ...x, start: s, end: s + x.durSecs }; });
+  const label = zoneAbbr(target, refUtc(base));
+  const dates = (joined.length ? joined.map(r => r.date) : items.map(x => dayToStr(Math.floor(x.start / 86400)))).sort();
+  return {
+    ...base, joined, unmatched, zoneLabel: label, tzConvertible: true,
+    timeline: { ...base.timeline, items, zone: label },
+    range: dates.length ? [dates[0], dates[dates.length - 1]] : base.range
+  };
+}
+function applyTz() { state.data = convertData(state.baseData, state.tz); }
+function tzOptions(d) {
+  const ref = refUtc(state.baseData);
+  let mine = "";
+  try { mine = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch {}
+  const list = TZ_CHOICES.slice();
+  if (mine && !list.some(([z]) => z === mine)) list.unshift([mine, "Your time zone"]);
+  return `<option value="">As reported (${esc(sourceZone(state.baseData) || "report time")})</option>` +
+    list.map(([z, l]) => `<option value="${z}" ${state.tz === z ? "selected" : ""}>${esc(l)} (${esc(zoneAbbr(z, ref))})${z === mine ? ", yours" : ""}</option>`).join("");
+}
+
+/* ============================================================
+   Event groups: sessions the user ties together as one event
+   ============================================================ */
+const groupKey = () => `wordly-event-groups:${String(state.baseData?.customer || "default").toLowerCase()}`;
+function loadGroups() {
+  try {
+    const known = new Set(titleStats().map(t => t.title));
+    const saved = JSON.parse(store.get(groupKey()) || "[]");
+    return saved.map(g => ({ ...g, titles: g.titles.filter(t => known.has(t)) })).filter(g => g.titles.length);
+  } catch { return []; }
+}
+function saveGroups() {
+  if (state.readOnly) return;
+  store.set(groupKey(), JSON.stringify(state.groups));
+}
+function currentGroup() { return state.groups.find(g => g.id === state.eventGroup) || null; }
+function titleStats() {
+  const m = {};
+  const add = (title, date, mins) => {
+    const t = (m[title] ||= { title, runs: 0, mins: 0, first: date, last: date });
+    t.runs++; t.mins += mins || 0;
+    if (date < t.first) t.first = date;
+    if (date > t.last) t.last = date;
+  };
+  const d = state.data;
+  if (d.joined.length) d.joined.forEach(r => add(r.title, r.date, r.mins));
+  else (d.timeline?.items || []).forEach(x => add(x.title, dayToStr(Math.floor(x.start / 86400)), 0));
+  return Object.values(m).sort((a, b) => a.title.localeCompare(b.title));
+}
+function suggestGroups() {
+  if (state.readOnly) return [];
+  const taken = new Set(state.groups.flatMap(g => g.titles));
+  const byKey = {};
+  titleStats().forEach(t => {
+    const parts = t.title.split(/\s+[-–—|:]\s+|:\s+/);
+    if (parts.length < 2) return;
+    const key = parts[0].trim();
+    if (key.length < 8) return;
+    (byKey[key] ||= []).push(t.title);
+  });
+  return Object.entries(byKey)
+    .filter(([, titles]) => titles.length > 1 && titles.some(t => !taken.has(t)))
+    .map(([name, titles]) => ({ name, titles }))
+    .slice(0, 6);
+}
+function fmtSpan(a, b) { return a === b ? prettyDate(a) : `${prettyDate(a)} to ${prettyDate(b)}`; }
+function groupAgg(g, rows) {
+  const set = new Set(g.titles), sub = rows.filter(r => set.has(r.title));
+  const a = { id: g.id, title: g.name, minutes: 0, attendees: 0, instances: sub.length, languages: {}, members: eventsByTitle(sub) };
+  sub.forEach(r => { a.minutes += r.mins; a.attendees += r.attendees; Object.entries(r.languages).forEach(([l, v]) => { a.languages[l] = (a.languages[l] || 0) + v; }); });
+  const ds = sub.map(r => r.date).sort();
+  a.first = ds[0]; a.last = ds[ds.length - 1];
+  a.members.forEach(mb => { const md = sub.filter(r => r.title === mb.title).map(r => r.date).sort(); mb.first = md[0]; mb.last = md[md.length - 1]; });
+  return a;
+}
+function groupCard(g) {
+  const lb = langBar(g.languages);
+  return `<button class="event group" data-event="group:${g.id}" aria-expanded="${state.selectedEvent === "group:" + g.id}">
+    <span class="t">${esc(g.title)}</span>
+    <span class="gmeta">${g.members.length} ${g.members.length === 1 ? "session title" : "session titles"}, ${esc(fmtSpan(g.first, g.last))}</span>
+    <span class="stats"><span><b>${fmtM(g.minutes)}</b> ${us_()}</span><span><b>${fmtN(g.attendees)}</b> attendees</span><span><b>${g.instances}</b> ${g.instances === 1 ? "run" : "runs"}</span></span>
+    ${Object.keys(g.languages).length ? lb.bar + lb.legend : ""}
+  </button>`;
+}
+function groupDrillHtml(g) {
+  const active = state.eventGroup === g.id;
+  return `<section class="drill">
+    <div class="drill-head"><h3>${esc(g.title)}</h3><button class="btn" id="closeDrill">Close</button></div>
+    <div class="drill-body">
+      <div class="chart-box" style="height:280px"><canvas id="cDrill"></canvas></div>
+      <table class="stats-table"><tbody>
+        <tr><td>Dates</td><td>${esc(fmtSpan(g.first, g.last))}</td></tr>
+        <tr><td>${U_()} used</td><td>${fmtM(g.minutes)}</td></tr>
+        <tr><td>Total attendees</td><td>${fmtN(g.attendees)}</td></tr>
+        <tr><td>Session runs</td><td>${fmtN(g.instances)}</td></tr>
+        <tr><td>Languages used</td><td>${Object.keys(g.languages).length}</td></tr>
+      </tbody></table>
+    </div>
+    <div class="table-wrap" style="margin-top:20px"><table class="data"><thead><tr><th>Session</th><th>Dates</th><th class="num">Runs</th><th class="num">${U_()}</th><th class="num">Attendees</th></tr></thead>
+      <tbody>${g.members.sort((a, b) => a.first.localeCompare(b.first)).map(mb => `<tr><td class="wrap">${esc(mb.title)}</td><td>${esc(fmtSpan(mb.first, mb.last))}</td><td class="num">${mb.instances}</td><td class="num">${fmtM(mb.minutes)}</td><td class="num">${fmtN(mb.attendees)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="upload-actions" style="margin-top:16px">
+      <button class="btn primary" id="gFilter">${active ? "Show all events" : "Show only this event across the dashboard"}</button>
+      ${state.readOnly ? "" : `<button class="btn" id="gEdit">Edit event</button><button class="btn" id="gDelete">Delete event</button>`}
+    </div>
+  </section>`;
+}
+function groupsSectionHtml(aggs, suggestions) {
+  let html = "";
+  if (suggestions.length) html += `<div class="suggest"><span class="hint">These look like parts of the same event:</span>${suggestions.map((s, i) => `<button class="chip" data-suggest="${i}">${esc(s.name)} (${s.titles.length} sessions)<span class="plus">Group</span></button>`).join("")}</div>`;
+  if (aggs.length) html += `<h2 class="section">Event groups</h2><div class="events" style="margin-bottom:28px">${aggs.map(groupCard).join("")}</div>`;
+  if (aggs.length || suggestions.length) html += `<h2 class="section">Sessions</h2>`;
+  return html;
+}
+function wireGroupControls(suggestions) {
+  const nb = $("#newGroup"); if (nb) nb.onclick = () => openGroupDialog();
+  document.querySelectorAll("[data-suggest]").forEach(b => b.onclick = () => {
+    const s = suggestions[+b.dataset.suggest];
+    openGroupDialog(null, s);
+  });
+  const gid = (state.selectedEvent || "").startsWith("group:") ? state.selectedEvent.slice(6) : null;
+  const gf = $("#gFilter"); if (gf) gf.onclick = () => { state.eventGroup = state.eventGroup === gid ? "" : gid; state.table.page = 0; renderDashboard(); };
+  const ge = $("#gEdit"); if (ge) ge.onclick = () => openGroupDialog(gid);
+  const gd = $("#gDelete");
+  if (gd) gd.onclick = () => {
+    if (!gd.dataset.confirm) { gd.dataset.confirm = "1"; gd.textContent = "Click again to delete"; return; }
+    state.groups = state.groups.filter(g => g.id !== gid);
+    if (state.eventGroup === gid) state.eventGroup = "";
+    state.selectedEvent = null; saveGroups(); renderDashboard();
+  };
+}
+function openGroupDialog(editId, preset) {
+  const g = state.groups.find(x => x.id === editId);
+  const titles = titleStats();
+  const chosen = new Set(g ? g.titles : preset ? preset.titles : []);
+  let dlg = $("#groupDlg");
+  if (!dlg) { dlg = document.createElement("dialog"); dlg.id = "groupDlg"; document.body.appendChild(dlg); }
+  dlg.innerHTML = `
+    <div class="dlg-head"><h2>${g ? "Edit event" : "Group sessions into an event"}</h2><button class="remove" id="gClose" aria-label="Close">×</button></div>
+    <p class="hint">Pick the sessions that belong to one event, like the different days or rooms of a conference. The event gets its own card on the Events tab and can be used as a filter across the dashboard.</p>
+    <label class="field">Event name<input type="text" id="gName" value="${esc(g ? g.name : preset ? preset.name : "")}" placeholder="For example, May 2026 Zoomposium"></label>
+    <input type="search" id="gSearch" placeholder="Search session titles" aria-label="Search session titles" style="width:100%">
+    <div class="pick-list" id="gList"></div>
+    <div class="upload-actions" style="margin-top:16px"><button class="btn primary" id="gSave">Save event</button><span class="hint" id="gCount"></span></div>`;
+  const draw = () => {
+    const q = $("#gSearch").value.trim().toLowerCase();
+    const shown = titles.filter(t => !q || t.title.toLowerCase().includes(q));
+    $("#gList").innerHTML = shown.length ? shown.map(t => `<label class="pick"><input type="checkbox" data-t="${esc(t.title)}" ${chosen.has(t.title) ? "checked" : ""}><span><b>${esc(t.title)}</b><small>${t.runs} ${t.runs === 1 ? "run" : "runs"}, ${esc(fmtSpan(t.first, t.last))}${t.mins ? `, ${fmtM(t.mins)} ${us_()}` : ""}</small></span></label>`).join("") : `<p class="hint" style="padding:12px">No session titles match that search.</p>`;
+    $("#gList").querySelectorAll("input").forEach(cb => cb.onchange = () => { cb.checked ? chosen.add(cb.dataset.t) : chosen.delete(cb.dataset.t); count(); });
+  };
+  const count = () => { $("#gCount").textContent = `${chosen.size} ${chosen.size === 1 ? "session title" : "session titles"} selected`; };
+  $("#gSearch").oninput = draw;
+  $("#gClose").onclick = () => dlg.close();
+  $("#gSave").onclick = () => {
+    const name = $("#gName").value.trim();
+    if (!name) { $("#gCount").textContent = "Add a name for this event."; $("#gName").focus(); return; }
+    if (!chosen.size) { $("#gCount").textContent = "Select at least one session."; return; }
+    if (g) Object.assign(g, { name, titles: [...chosen] });
+    else state.groups.push({ id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, titles: [...chosen] });
+    const id = g ? g.id : state.groups[state.groups.length - 1].id;
+    saveGroups(); dlg.close();
+    state.tab = "events"; state.selectedEvent = "group:" + id;
+    renderDashboard();
+  };
+  draw(); count(); dlg.showModal();
+}
+
+/* ============================================================
+   Accounts (from the Transaction report)
+   ============================================================ */
+const txKey = t => dayNum(t.date) * 86400 + (t.endSec || 0);
+function accountSummary() {
+  const r = state.range, from = r.fromDate || null, to = r.toDate || null;
+  const all = (state.data.transactions || []).slice().sort((a, b) => txKey(a) - txKey(b));
+  const m = {};
+  for (const t of all) {
+    const a = (m[t.accountName || "Unknown"] ||= { name: t.accountName || "Unknown", email: "", owner: "", credited: 0, consumed: 0, other: 0, balance: null, last: null, count: 0 });
+    if (t.ownerEmail) a.email = t.ownerEmail;
+    if (t.ownerName) a.owner = t.ownerName;
+    if (to && t.date > to) continue;
+    if (t.balance != null) a.balance = t.balance;
+    if (from && t.date < from) continue;
+    a.count++; a.last = t.date;
+    if (t.dc === "credit") a.credited += Math.abs(t.minutes);
+    else if (t.dc === "debit") a.consumed += Math.abs(t.minutes);
+    else a.other += t.minutes;
+  }
+  return Object.values(m);
+}
+function accountTxInWindow(name) {
+  const r = state.range;
+  return (state.data.transactions || []).filter(t => (name == null || (t.accountName || "Unknown") === name) && (!r.fromDate || t.date >= r.fromDate) && (!r.toDate || t.date <= r.toDate));
+}
+function renderAccounts() {
+  if (state.data.accountSnapshot && state.data.accountSnapshot.length) return renderSnapshotAccounts();
+  const list = accountSummary(), rangeOn = rangeActive();
+  const s = state.acctSort || { key: "consumed", dir: -1 };
+  list.sort((a, b) => { const x = a[s.key], y = b[s.key]; return (typeof x === "number" || typeof y === "number" ? (x ?? -Infinity) - (y ?? -Infinity) : String(x ?? "").localeCompare(String(y ?? ""))) * s.dir; });
+  const tot = list.reduce((t, a) => ({ credited: t.credited + a.credited, consumed: t.consumed + a.consumed, balance: t.balance + (a.balance || 0) }), { credited: 0, consumed: 0, balance: 0 });
+  const hasOther = list.some(a => Math.abs(a.other) >= 1);
+  const balLabel = rangeOn && state.range.toDate ? "Balance at end of window" : "Available balance";
+  const sel = list.find(a => a.name === state.selectedAccount);
+  const cols = [["name", "Account"], ["credited", `Purchased or credited (${us_()})`], ["consumed", `Consumed (${us_()})`], ...(hasOther ? [["other", `Other adjustments (${us_()})`]] : []), ["balance", `${balLabel} (${us_()})`], ["last", "Last activity"]];
+
+  $("#view").innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmtN(list.length)}</div><div class="l">Accounts</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.credited)}</div><div class="l">${U_()} purchased or credited</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.consumed)}</div><div class="l">${U_()} consumed</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.balance)}</div><div class="l">${balLabel} (${u_()})</div></div>
+    </div>
+    <p class="hint" style="margin:-8px 0 20px">From the Transaction report.${rangeOn ? " Purchases and consumption cover the selected dates; balances are as of the end of the window." : ""} The workspace and event filters don’t apply here, because the Transaction report tracks minutes by account.</p>
+    ${sel ? accountDrillHtml(sel) : ""}
+    <div class="table-wrap" style="margin-bottom:24px"><table class="data">
+      <thead><tr>${cols.map(([k, l]) => `<th class="${k === "name" || k === "last" ? "" : "num"}" aria-sort="${s.key === k ? (s.dir > 0 ? "ascending" : "descending") : "none"}"><button data-asort="${k}">${l}${s.key === k ? (s.dir > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("")}<th></th></tr></thead>
+      <tbody>${list.map(a => `<tr class="${state.selectedAccount === a.name ? "row-sel" : ""}">
+        <td><b>${esc(a.name)}</b><br><span class="hint">${esc(a.email || a.owner)}</span></td>
+        <td class="num">${fmtM(a.credited)}</td>
+        <td class="num">${fmtM(a.consumed)}</td>
+        ${hasOther ? `<td class="num">${a.other ? (a.other > 0 ? "+" : "") + fmtM(a.other) : ""}</td>` : ""}
+        <td class="num"><b>${a.balance == null ? "" : fmtM(a.balance)}</b></td>
+        <td>${a.last ? prettyDate(a.last) : ""}</td>
+        <td><button class="btn" data-acct="${esc(a.name)}" style="padding:4px 10px">${state.selectedAccount === a.name ? "Hide" : "Details"}</button></td>
+      </tr>`).join("")}</tbody>
+      <tfoot><tr><td><b>All accounts</b></td><td class="num"><b>${fmtM(tot.credited)}</b></td><td class="num"><b>${fmtM(tot.consumed)}</b></td>${hasOther ? `<td class="num"><b>${fmtM(list.reduce((t, a) => t + a.other, 0))}</b></td>` : ""}<td class="num"><b>${fmtM(tot.balance)}</b></td><td></td><td></td></tr></tfoot>
+    </table></div>
+    <div class="grid2">
+      <div class="panel"><h3>Purchased or credited vs consumed by month</h3><div class="chart-box"><canvas id="cAcctMonth"></canvas></div></div>
+      <div class="panel"><h3>${balLabel} by account</h3><div class="chart-box" id="acctBalBox"><canvas id="cAcctBal"></canvas></div></div>
+    </div>`;
+
+  document.querySelectorAll("[data-asort]").forEach(b => b.onclick = () => {
+    const k = b.dataset.asort;
+    state.acctSort = s.key === k ? { key: k, dir: -s.dir } : { key: k, dir: k === "name" ? 1 : -1 };
+    renderDashboard();
+  });
+  document.querySelectorAll("[data-acct]").forEach(b => b.onclick = () => {
+    state.selectedAccount = state.selectedAccount === b.dataset.acct ? null : b.dataset.acct;
+    state.ledgerAll = false; renderDashboard();
+    if (state.selectedAccount) $(".drill")?.scrollIntoView({ block: "nearest" });
+  });
+  const close = $("#closeAcct"); if (close) close.onclick = () => { state.selectedAccount = null; renderDashboard(); };
+  const la = $("#ledgerAll"); if (la) la.onclick = () => { state.ledgerAll = true; renderDashboard(); };
+
+  chartDefaults();
+  const tip = { callbacks: { label: c => `${c.dataset.label || c.label}: ${fmtCV(c.raw)}` } };
+  const txs = accountTxInWindow(sel ? null : null);
+  const ms = txs.map(t => t.date.slice(0, 7)).sort();
+  const months = ms.length ? monthsBetween(ms[0], ms[ms.length - 1]) : [];
+  const cr = sumBy(txs.filter(t => t.dc === "credit"), t => t.date.slice(0, 7), t => Math.abs(t.minutes));
+  const co = sumBy(txs.filter(t => t.dc === "debit"), t => t.date.slice(0, 7), t => Math.abs(t.minutes));
+  charts.acctMonth = new Chart($("#cAcctMonth"), {
+    type: "bar",
+    data: { labels: months.map(monthLabel), datasets: [
+      { label: "Purchased or credited", data: months.map(m => cv(cr[m] || 0)), backgroundColor: "#129737", borderRadius: 4 },
+      { label: "Consumed", data: months.map(m => cv(co[m] || 0)), backgroundColor: css("--blue"), borderRadius: 4 }
+    ] },
+    options: { maintainAspectRatio: false, plugins: { tooltip: tip }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+  });
+  const bal = list.filter(a => a.balance != null).sort((a, b) => b.balance - a.balance);
+  $("#acctBalBox").style.height = Math.max(280, bal.length * 30 + 40) + "px";
+  charts.acctBal = new Chart($("#cAcctBal"), {
+    type: "bar",
+    data: { labels: bal.map(a => a.name), datasets: [{ label: U_(), data: bal.map(a => cv(a.balance)), backgroundColor: bal.map(a => a.balance < 0 ? "#CD5500" : css("--blue-2")), borderRadius: 4 }] },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } } } }
+  });
+
+  if (sel) {
+    const pts = accountTxInWindow(sel.name).filter(t => t.balance != null).sort((a, b) => txKey(a) - txKey(b));
+    charts.acctDrill = new Chart($("#cAcctDrill"), {
+      type: "line",
+      data: { labels: pts.map(t => prettyDate(t.date)), datasets: [{ label: "Balance", data: pts.map(t => cv(t.balance)), borderColor: css("--blue"), backgroundColor: css("--blue"), pointRadius: pts.length > 60 ? 0 : 2, tension: 0, stepped: true }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { beginAtZero: true } } }
+    });
+  }
+}
+function accountDrillHtml(a) {
+  const ledger = accountTxInWindow(a.name).sort((x, y) => txKey(y) - txKey(x));
+  const shown = state.ledgerAll ? ledger : ledger.slice(0, 25);
+  const typeLabel = t => t.dc === "credit" ? "Credit" : t.dc === "debit" ? "Debit" : (t.dc ? t.dc.replace(/^./, c => c.toUpperCase()) : "Other");
+  return `<section class="drill">
+    <div class="drill-head"><h3>${esc(a.name)}</h3><button class="btn" id="closeAcct">Close</button></div>
+    <div class="drill-body acct-body">
+      <table class="stats-table"><tbody>
+        <tr><td>Owner</td><td>${esc([a.owner, a.email].filter(Boolean).join(", ")) || "Not listed"}</td></tr>
+        <tr><td>Purchased or credited</td><td>${fmtM(a.credited)} ${us_()}</td></tr>
+        <tr><td>Consumed</td><td>${fmtM(a.consumed)} ${us_()}</td></tr>
+        ${Math.abs(a.other) >= 1 ? `<tr><td>Other adjustments</td><td>${fmtM(a.other)} ${us_()}</td></tr>` : ""}
+        <tr><td>Balance</td><td>${a.balance == null ? "" : fmtM(a.balance) + " " + us_()}</td></tr>
+        <tr><td>Transactions</td><td>${fmtN(a.count)}</td></tr>
+      </tbody></table>
+      <div><h3 style="margin:0 0 8px;font-size:15px">Balance over time</h3><div class="chart-box" style="height:240px"><canvas id="cAcctDrill"></canvas></div></div>
+    </div>
+    <div class="table-wrap" style="margin-top:20px"><table class="data">
+      <thead><tr><th>Date</th><th>Time</th><th>Type</th><th class="num">${U_()}</th><th class="num">Balance</th><th>Description</th><th>User</th></tr></thead>
+      <tbody>${shown.map(t => `<tr><td>${prettyDate(t.date)}</td><td>${fmtClock(t.endSec)}</td><td>${esc(typeLabel(t))}</td>
+        <td class="num">${t.dc === "debit" ? "−" + fmtM(Math.abs(t.minutes)) : t.dc === "credit" ? "+" + fmtM(Math.abs(t.minutes)) : fmtM(t.minutes)}</td>
+        <td class="num">${t.balance == null ? "" : fmtM(t.balance)}</td><td class="wrap">${esc(t.description || "")}</td><td>${esc(t.user || "")}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">No transactions in this window.</td></tr>`}</tbody>
+    </table></div>
+    ${ledger.length > shown.length ? `<div style="margin-top:12px"><button class="btn" id="ledgerAll">Show all ${fmtN(ledger.length)} transactions</button></div>` : ""}
+  </section>`;
+}
+
+/* ============================================================
+   Removing sessions (kept per customer in this browser)
+   ============================================================ */
+const exKey = () => `wordly-removed-sessions:${String(state.baseData?.customer || "default").toLowerCase()}`;
+function loadExcluded() {
+  try {
+    const known = new Set(state.baseData.joined.map(r => r.uid));
+    return new Set(JSON.parse(store.get(exKey()) || "[]").filter(k => known.has(k)));
+  } catch { return new Set(); }
+}
+function saveExcluded() {
+  if (state.readOnly) return;
+  store.set(exKey(), JSON.stringify([...state.excluded]));
+}
+function removeSessions(uids) {
+  uids.forEach(u => state.excluded.add(u));
+  state.picked.clear(); saveExcluded(); renderDashboard();
+  toast(`Removed ${uids.length} ${uids.length === 1 ? "session" : "sessions"}. You can restore ${uids.length === 1 ? "it" : "them"} from the note at the top.`);
+}
+function restoreSessions(uids) {
+  uids.forEach(u => state.excluded.delete(u));
+  saveExcluded(); renderDashboard();
+}
+function removedNoticeHtml() {
+  if (!state.excluded || !state.excluded.size) return "";
+  const rows = state.data.joined.filter(r => state.excluded.has(r.uid)).sort((a, b) => b.ts - a.ts);
+  const mins = rows.reduce((a, r) => a + r.mins, 0);
+  return `<details class="notice info removed"><summary>${rows.length} ${rows.length === 1 ? "session has" : "sessions have"} been removed (${fmtM(mins)} ${u_()}). ${rows.length === 1 ? "It doesn’t" : "They don’t"} count toward any totals or charts.</summary>
+    <div class="removed-list">${rows.map(r => `<div class="removed-item"><span>${esc(prettyDate(r.date))}, ${fmtClock(r.startSec)}: <b>${esc(r.title)}</b> (${esc(r.sessionId)}, ${fmtM(r.mins)} ${us_()})</span>${state.readOnly ? "" : `<button class="btn" data-restore="${esc(r.uid)}">Restore</button>`}</div>`).join("")}</div>
+    ${state.readOnly ? "" : `<button class="btn" id="restoreAll" style="margin-top:10px">Restore all</button>`}
+  </details>`;
+}
+function wireRemovedNotice() {
+  document.querySelectorAll("[data-restore]").forEach(b => b.onclick = () => restoreSessions([b.dataset.restore]));
+  const ra = $("#restoreAll"); if (ra) ra.onclick = () => restoreSessions([...state.excluded]);
+}
+
+/* ============================================================
+   Live data: customer search against BigQuery (when served by server.js)
+   ============================================================ */
+async function detectApi() {
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch("api/health", { signal: ctl.signal }); clearTimeout(t);
+    if (!r.ok) return false;
+    const j = await r.json();
+    return j && j.source === "bigquery";
+  } catch { return false; }
+}
+function isoDay(d) { return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate()); }
+function csState() {
+  if (!state.cs) {
+    const now = new Date(), past = new Date(); past.setFullYear(now.getFullYear() - 1);
+    let saved = [];
+    try { saved = JSON.parse(store.get("wordly-saved-customers") || "[]"); } catch {}
+    state.cs = { q: "", results: [], selected: [], name: "", from: isoDay(past), to: isoDay(now), save: true, saved, busy: false, msg: "" };
+  }
+  return state.cs;
+}
+const KIND_LABEL = { service: "Workspace", company: "Company", domain: "Email domain", account: "Account", pool: "Pool of minutes" };
+const itemKey = it => `${it.kind}:${it.value}`;
+function customerSearchHtml() {
+  const cs = csState();
+  return `
+    <section class="cust">
+      <h1>Look up a customer</h1>
+      <p class="lead">Search by company, workspace, email domain, account name, or pool of minutes. Select everything that belongs to the customer, then load their dashboard. Data comes live from BigQuery.</p>
+      ${cs.saved.length ? `<div class="saved"><span class="hint">Saved customers</span>${cs.saved.map((c, i) => `<span class="saved-chip"><button class="chip-main" data-saved="${i}">${esc(c.name)}</button><button class="chip-x" data-unsave="${i}" aria-label="Forget ${esc(c.name)}">×</button></span>`).join("")}</div>` : ""}
+      <input type="search" id="csQ" class="cs-q" value="${esc(cs.q)}" placeholder="Search, for example encore, @encoreglobal.com, or a pool name" aria-label="Search customers" autocomplete="off">
+      <div id="csResults" class="cs-results"></div>
+      <div id="csSelected"></div>
+      <div class="cs-form">
+        <label class="field">Customer name<input type="text" id="csName" value="${esc(cs.name)}" placeholder="For example, Encore"></label>
+        <label>From <input type="date" id="csFrom" value="${cs.from}"></label>
+        <label>To <input type="date" id="csTo" value="${cs.to}"></label>
+        <label class="cs-save"><input type="checkbox" id="csSave" ${cs.save ? "checked" : ""}> Save this customer for next time</label>
+      </div>
+      <div class="upload-actions">
+        <button class="btn primary" id="csLoad">Load dashboard</button>
+        <span class="hint" id="csMsg">${esc(cs.msg)}</span>
+      </div>
+    </section>
+    <h2 class="section" style="margin-top:36px">Or upload reports</h2>
+    <p class="hint" style="margin-top:-6px">Add an Admin Transaction report here before loading a customer to include balances and the Accounts tab.</p>`;
+}
+function drawCsResults() {
+  const cs = csState(), box = $("#csResults");
+  if (!box) return;
+  const sel = new Set(cs.selected.map(itemKey));
+  box.innerHTML = cs.q.trim().length < 2 ? "" : cs.err ? `<div class="error">${esc(cs.err)}</div>` : !cs.results.length ? `<p class="hint">${cs.searching ? "Searching…" : "No matches."}</p>` :
+    cs.results.map((r, i) => `<button class="cs-row${sel.has(itemKey(r)) ? " on" : ""}" data-res="${i}" aria-pressed="${sel.has(itemKey(r))}">
+      <span class="cs-kind">${KIND_LABEL[r.kind] || r.kind}</span><span class="cs-label">${esc(r.label || r.value)}${r.kind === "account" ? ` <span class="hint">(${esc(r.value)})</span>` : ""}</span><span class="hint">${r.kind === "company" || r.kind === "service" ? `${fmtN(r.accounts)} accounts` : `${fmtN(r.sessions)} sessions`}</span></button>`).join("");
+  box.querySelectorAll("[data-res]").forEach(b => b.onclick = () => {
+    const r = cs.results[+b.dataset.res], k = itemKey(r);
+    cs.selected = sel.has(k) ? cs.selected.filter(x => itemKey(x) !== k) : [...cs.selected, r];
+    if (!cs.name && cs.selected.length) { cs.name = r.kind === "company" || r.kind === "service" ? r.label : r.kind === "domain" ? r.value.split(".")[0].replace(/^./, c => c.toUpperCase()) : (r.label || r.value); $("#csName").value = cs.name; }
+    drawCsResults(); drawCsSelected();
+  });
+}
+function drawCsSelected() {
+  const cs = csState(), box = $("#csSelected");
+  if (!box) return;
+  box.innerHTML = cs.selected.length ? `<div class="cs-selected"><span class="hint">Included:</span>${cs.selected.map((r, i) => `<span class="saved-chip"><span class="chip-main">${esc(KIND_LABEL[r.kind])}: ${esc(r.label || r.value)}</span><button class="chip-x" data-unsel="${i}" aria-label="Remove">×</button></span>`).join("")}</div>` : "";
+  box.querySelectorAll("[data-unsel]").forEach(b => b.onclick = () => { cs.selected.splice(+b.dataset.unsel, 1); drawCsResults(); drawCsSelected(); });
+}
+let csTimer = null, csSeq = 0;
+function wireCustomerSearch() {
+  const cs = csState();
+  const q = $("#csQ");
+  q.oninput = () => {
+    cs.q = q.value; clearTimeout(csTimer);
+    if (cs.q.trim().length < 2) { cs.results = []; drawCsResults(); return; }
+    cs.searching = true; cs.err = ""; drawCsResults();
+    csTimer = setTimeout(async () => {
+      const seq = ++csSeq;
+      try {
+        const r = await fetch("api/search?q=" + encodeURIComponent(cs.q.trim()));
+        const j = await r.json();
+        if (seq !== csSeq) return;
+        if (!r.ok) throw new Error(j.error || r.statusText);
+        cs.results = j.results || [];
+      } catch (e) { cs.results = []; cs.err = "Search failed: " + e.message; }
+      cs.searching = false; drawCsResults();
+    }, 300);
+  };
+  $("#csName").oninput = e => { cs.name = e.target.value; };
+  $("#csFrom").onchange = e => { cs.from = e.target.value; };
+  $("#csTo").onchange = e => { cs.to = e.target.value; };
+  $("#csSave").onchange = e => { cs.save = e.target.checked; };
+  document.querySelectorAll("[data-saved]").forEach(b => b.onclick = () => {
+    const c = cs.saved[+b.dataset.saved];
+    cs.selected = c.items.slice(); cs.name = c.name;
+    loadCustomer();
+  });
+  document.querySelectorAll("[data-unsave]").forEach(b => b.onclick = () => {
+    cs.saved.splice(+b.dataset.unsave, 1);
+    store.set("wordly-saved-customers", JSON.stringify(cs.saved));
+    renderUpload();
+  });
+  $("#csLoad").onclick = loadCustomer;
+  drawCsResults(); drawCsSelected();
+}
+async function loadCustomer() {
+  const cs = csState();
+  const msg = t => { cs.msg = t; const m = $("#csMsg"); if (m) m.textContent = t; };
+  if (!cs.selected.length) { msg("Search and select at least one domain, account, or pool first."); return; }
+  const name = (cs.name || "").trim() || cs.selected[0].label || cs.selected[0].value;
+  const body = { from: cs.from || "", to: cs.to || "" };
+  [["service", "services"], ["company", "companies"], ["domain", "domains"], ["account", "accounts"], ["pool", "pools"]].forEach(([k, plural]) => { body[plural] = cs.selected.filter(r => r.kind === k).map(r => r.value); });
+  msg("Loading sessions from BigQuery…");
+  const btn = $("#csLoad"); if (btn) btn.disabled = true;
+  try {
+    const r = await fetch("api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    if (!j.rows.length) { msg("No sessions found for that selection and date range."); if (btn) btn.disabled = false; return; }
+    if (cs.save) {
+      cs.saved = cs.saved.filter(c => c.name.toLowerCase() !== name.toLowerCase());
+      cs.saved.unshift({ name, items: cs.selected.map(({ kind, value, label }) => ({ kind, value, label })) });
+      store.set("wordly-saved-customers", JSON.stringify(cs.saved.slice(0, 50)));
+    }
+    const rows = [j.header, ...j.rows];
+    const entry = { id: ++fileSeq, file: { name: `BigQuery: ${name}` }, kind: "usage", rows, hdr: findHeader(rows), note: `${fmtN(j.rows.length)} sessions from BigQuery` };
+    state.files = state.files.filter(f => f.kind === "tx").concat(entry);
+    state.pendingCustomer = name;
+    state.pendingAccounts = j.accounts || null;
+    msg(j.truncated ? `Loaded the first ${fmtN(j.rows.length)} sessions. Narrow the dates to see everything.` : "");
+    build();
+    if (j.truncated) toast(`Only the first ${fmtN(j.rows.length)} sessions were loaded. Narrow the date range to see all of them.`);
+  } catch (e) {
+    console.error(e); msg("Couldn’t load sessions: " + e.message);
+  }
+  if (btn) btn.disabled = false;
+}
+function browserZone() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } }
+
+/* ============================================================
+   Accounts from the live balance snapshot (usage_with_account_name)
+   ============================================================ */
+function renderSnapshotAccounts() {
+  const all = state.data.accountSnapshot;
+  all.forEach(a => { if (a._last === undefined) { a._last = parseDate(a.Last_Used) || ""; a._created = parseDate(a.Date_Created) || ""; } });
+  const tot = all.reduce((t, a) => ({ consumed: t.consumed + a.Consumed_Mins, available: t.available + a.Available_Mins, d30: t.d30 + a.Consumed_Last_30_Days }), { consumed: 0, available: 0, d30: 0 });
+  const over = all.filter(a => a.Available_Mins < 0).length;
+  const snapDate = all.map(a => a.snapshot_date).filter(Boolean).sort().pop();
+  $("#view").innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmtN(all.length)}</div><div class="l">Accounts</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.consumed)}</div><div class="l">${U_()} consumed to date</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.available)}</div><div class="l">${U_()} available</div></div>
+      <div class="kpi"><div class="v">${fmtM(tot.d30)}</div><div class="l">${U_()} used in the last 30 days</div></div>
+    </div>
+    <p class="hint" style="margin:-8px 0 20px">Live balances from BigQuery${snapDate ? ` as of ${prettyDate(snapDate)}` : ""}.${over ? ` <b class="neg">${over} ${over === 1 ? "account is" : "accounts are"} over the limit.</b>` : ""} The date, workspace and event filters don’t apply here.</p>
+    <div class="grid2" style="margin-bottom:24px">
+      <div class="panel"><h3>Most used in the last 30 days</h3><div class="chart-box"><canvas id="cSnapTop"></canvas></div></div>
+      <div class="panel"><h3>Lowest available balances</h3><div class="chart-box"><canvas id="cSnapLow"></canvas></div></div>
+    </div>
+    <div class="toolbar"><input type="search" id="snapQ" style="min-width:280px" placeholder="Search accounts or owners" value="${esc((state.snap || {}).q || "")}" aria-label="Search accounts"><span class="hint" id="snapCount"></span></div>
+    <div id="snapTable"></div>
+    <h2 class="section" style="margin-top:32px">Usage by pool or workspace</h2>
+    <p class="hint" style="margin-top:-6px">From the session data, so it follows the date, workspace and event filters. Workspaces created under someone else’s account show up here even when they don’t have a balance row of their own.</p>
+    <div id="poolTable"></div>`;
+  $("#snapQ").oninput = e => { const st = snapState(); st.q = e.target.value; st.page = 0; drawSnapTable(); };
+  drawSnapTable();
+  drawPoolTable();
+
+  chartDefaults();
+  const tip = { callbacks: { label: c => `${c.dataset.label || c.label}: ${fmtCV(c.raw)}` } };
+  const short = s => (s || "").length > 28 ? s.slice(0, 27) + "…" : (s || "");
+  const top = all.filter(a => a.Consumed_Last_30_Days > 0).sort((a, b) => b.Consumed_Last_30_Days - a.Consumed_Last_30_Days).slice(0, 10);
+  const low = all.slice().sort((a, b) => a.Available_Mins - b.Available_Mins).slice(0, 10);
+  charts.snapTop = new Chart($("#cSnapTop"), {
+    type: "bar",
+    data: { labels: top.map(a => short(a.portal_account_name)), datasets: [{ label: U_(), data: top.map(a => cv(a.Consumed_Last_30_Days)), backgroundColor: css("--blue"), borderRadius: 4 }] },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } } } }
+  });
+  charts.snapLow = new Chart($("#cSnapLow"), {
+    type: "bar",
+    data: { labels: low.map(a => short(a.portal_account_name)), datasets: [{ label: U_(), data: low.map(a => cv(a.Available_Mins)), backgroundColor: low.map(a => a.Available_Mins < 0 ? "#CD5500" : css("--blue-2")), borderRadius: 4 }] },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } } } }
+  });
+}
+function drawPoolTable() {
+  const byName = {};
+  (state.data.accountSnapshot || []).forEach(a => { if (a.portal_account_name) byName[a.portal_account_name] = a; });
+  const m = {};
+  activeRows().forEach(r => {
+    const k = r.account || "Unknown";
+    const p = (m[k] ||= { pool: k, sessions: 0, mins: 0, attendees: 0, last: "", emails: {} });
+    p.sessions++; p.mins += r.mins; p.attendees += r.attendees;
+    if (r.date > p.last) p.last = r.date;
+    if (r.email) p.emails[r.email] = (p.emails[r.email] || 0) + 1;
+  });
+  const st = state.poolSort || (state.poolSort = { key: "mins", dir: -1 });
+  const list = Object.values(m).map(p => ({ ...p, balance: byName[p.pool] ? byName[p.pool].Available_Mins : null, runBy: Object.entries(p.emails).sort((a, b) => b[1] - a[1]).map(e => e[0]) }));
+  list.sort((a, b) => { const x = a[st.key], y = b[st.key]; return (typeof x === "number" || typeof y === "number" ? (x ?? -Infinity) - (y ?? -Infinity) : String(x ?? "").localeCompare(String(y ?? ""))) * st.dir; });
+  const cols = [["pool", "Pool or workspace"], ["sessions", "Sessions"], ["mins", U_()], ["attendees", "Attendees"], ["balance", `Available (${us_()})`], ["last", "Last used"]];
+  const numc = new Set(["sessions", "mins", "attendees", "balance"]);
+  $("#poolTable").innerHTML = list.length ? `<div class="table-wrap"><table class="data">
+    <thead><tr>${cols.map(([k, l]) => `<th class="${numc.has(k) ? "num" : ""}"><button data-psort="${k}">${l}${st.key === k ? (st.dir > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("")}<th>Run by</th></tr></thead>
+    <tbody>${list.map(p => `<tr>
+      <td class="wrap"><b>${esc(p.pool)}</b></td>
+      <td class="num">${fmtN(p.sessions)}</td>
+      <td class="num">${fmtM(p.mins)}</td>
+      <td class="num">${fmtN(p.attendees)}</td>
+      <td class="num ${p.balance != null && p.balance < 0 ? "neg" : ""}">${p.balance == null ? `<span class="hint">No balance row</span>` : fmtM(p.balance)}</td>
+      <td>${p.last ? prettyDate(p.last) : ""}</td>
+      <td class="wrap"><span class="hint">${esc(p.runBy.slice(0, 2).join(", "))}${p.runBy.length > 2 ? ` and ${p.runBy.length - 2} more` : ""}</span></td>
+    </tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">No sessions in this window.</div>`;
+  document.querySelectorAll("[data-psort]").forEach(b => b.onclick = () => {
+    const k = b.dataset.psort;
+    state.poolSort = st.key === k ? { key: k, dir: -st.dir } : { key: k, dir: k === "pool" ? 1 : -1 };
+    drawPoolTable();
+  });
+}
+function snapState() { return state.snap || (state.snap = { key: "Consumed_Mins", dir: -1, q: "", page: 0 }); }
+function drawSnapTable() {
+  const st = snapState(), q = st.q.trim().toLowerCase();
+  const cols = [
+    ["portal_account_name", "Account"], ["Service", "Workspace"], ["Consumed_Mins", `Consumed (${us_()})`], ["Available_Mins", `Available (${us_()})`],
+    ["Consumed_Last_30_Days", `Last 30 days (${us_()})`], ["Consumed_Last_7_Days", `Last 7 days (${us_()})`],
+    ["Allow_Overage", "Overage allowed"], ["_last", "Last used"], ["_created", "Created"]
+  ];
+  const list = state.data.accountSnapshot.filter(a => !q || [a.portal_account_name, a.Owner_Name, a.Owner_Email].join(" ").toLowerCase().includes(q));
+  list.sort((a, b) => { const x = a[st.key], y = b[st.key]; return (typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""))) * st.dir; });
+  const pages = Math.max(1, Math.ceil(list.length / 25));
+  st.page = Math.min(st.page, pages - 1);
+  const slice = list.slice(st.page * 25, st.page * 25 + 25);
+  $("#snapCount").textContent = `${fmtN(list.length)} ${list.length === 1 ? "account" : "accounts"}`;
+  const num = new Set(["Consumed_Mins", "Available_Mins", "Consumed_Last_30_Days", "Consumed_Last_7_Days"]);
+  $("#snapTable").innerHTML = `
+    <div class="table-wrap"><table class="data">
+      <thead><tr>${cols.map(([k, l]) => `<th class="${num.has(k) ? "num" : ""}" aria-sort="${st.key === k ? (st.dir > 0 ? "ascending" : "descending") : "none"}"><button data-ssort="${k}">${l}${st.key === k ? (st.dir > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("")}</tr></thead>
+      <tbody>${slice.map(a => `<tr>
+        <td class="wrap"><b>${esc(a.portal_account_name || "")}</b><br><span class="hint">${esc(a.Owner_Email || a.Owner_Name || "")}</span></td>
+        <td>${a.Service && a.Service !== "Active" && a.Service !== "Restricted" ? esc(a.Service) : `<span class="hint">${esc(a.Service || "")}</span>`}</td>
+        <td class="num">${fmtM(a.Consumed_Mins)}</td>
+        <td class="num ${a.Available_Mins < 0 ? "neg" : ""}"><b>${fmtM(a.Available_Mins)}</b></td>
+        <td class="num">${fmtM(a.Consumed_Last_30_Days)}</td>
+        <td class="num">${fmtM(a.Consumed_Last_7_Days)}</td>
+        <td>${a.Allow_Overage === true || a.Allow_Overage === "true" ? "Yes" : a.Allow_Overage === false || a.Allow_Overage === "false" ? "No" : ""}</td>
+        <td>${a._last ? prettyDate(a._last) : esc(a.Last_Used || "")}</td>
+        <td>${a._created ? prettyDate(a._created) : esc(a.Date_Created || "")}</td>
+      </tr>`).join("") || `<tr><td colspan="${cols.length}" class="empty">No accounts match that search.</td></tr>`}</tbody>
+    </table></div>
+    <div class="pager"><span>Page ${st.page + 1} of ${pages}</span>
+      <span><button class="btn" id="snapPrev" ${st.page === 0 ? "disabled" : ""}>Previous</button>
+      <button class="btn" id="snapNext" ${st.page >= pages - 1 ? "disabled" : ""}>Next</button></span></div>`;
+  document.querySelectorAll("[data-ssort]").forEach(b => b.onclick = () => {
+    const k = b.dataset.ssort;
+    if (st.key === k) st.dir *= -1; else { st.key = k; st.dir = ["portal_account_name", "Allow_Overage", "Service"].includes(k) ? 1 : -1; }
+    drawSnapTable();
+  });
+  $("#snapPrev").onclick = () => { st.page--; drawSnapTable(); };
+  $("#snapNext").onclick = () => { st.page++; drawSnapTable(); };
+}
+
+/* ============================================================
+   Saved dashboards: time-stamped versions kept in this browser
+   ============================================================ */
+const vault = {
+  _db: null,
+  async db() {
+    if (this._db) return this._db;
+    this._db = await new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error("this browser doesn’t allow saving"));
+      let r;
+      try { r = indexedDB.open("wordly-dashboards", 1); } catch (e) { return rej(e); }
+      r.onupgradeneeded = () => { const d = r.result; d.createObjectStore("meta", { keyPath: "id" }); d.createObjectStore("data", { keyPath: "id" }); };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error || new Error("storage is unavailable"));
+    });
+    return this._db;
+  },
+  async list() {
+    const d = await this.db();
+    return new Promise((res, rej) => {
+      const r = d.transaction("meta").objectStore("meta").getAll();
+      r.onsuccess = () => res(r.result.sort((a, b) => b.savedAt.localeCompare(a.savedAt)));
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async get(id) {
+    const d = await this.db();
+    return new Promise((res, rej) => {
+      const r = d.transaction("data").objectStore("data").get(id);
+      r.onsuccess = () => res(r.result ? r.result.data : null);
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async put(meta, data) {
+    const d = await this.db();
+    return new Promise((res, rej) => {
+      const t = d.transaction(["meta", "data"], "readwrite");
+      t.objectStore("meta").put(meta); t.objectStore("data").put({ id: meta.id, data });
+      t.oncomplete = () => res(meta);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error || new Error("there isn’t enough storage space"));
+    });
+  },
+  async remove(id) {
+    const d = await this.db();
+    return new Promise((res, rej) => {
+      const t = d.transaction(["meta", "data"], "readwrite");
+      t.objectStore("meta").delete(id); t.objectStore("data").delete(id);
+      t.oncomplete = () => res(); t.onerror = () => rej(t.error);
+    });
+  }
+};
+function fmtStamp(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const h = d.getHours(), m = d.getMinutes();
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? "AM" : "PM"}`;
+}
+function stampForFile(iso) { const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}`; }
+async function saveTextFile(filename, text, type) {
+  const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
+  if (dl) {
+    try { await dl.save({ filename, data: text }); return true; }
+    catch (e) { if (e?.code !== "declined") toast("Couldn’t save the file here."); return false; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return true;
+}
+function versionMeta(data, id, savedAt) {
+  return {
+    id, savedAt, customer: data.customer || "Untitled customer",
+    sessions: data.joined.length, minutes: data.joined.reduce((a, r) => a + r.mins, 0),
+    range: data.range || null, balances: Boolean(data.hasTx || (data.accountSnapshot && data.accountSnapshot.length))
+  };
+}
+function openSaveDialog() {
+  let dlg = $("#saveDlg");
+  if (!dlg) { dlg = document.createElement("dialog"); dlg.id = "saveDlg"; document.body.appendChild(dlg); }
+  dlg.innerHTML = `
+    <div class="dlg-head"><h2>Save this version</h2><button class="remove" id="svClose" aria-label="Close">×</button></div>
+    <p class="hint">Saved versions are kept in this browser on this computer, with the date and time you save them. Save a new version whenever you load newer reports.</p>
+    <label class="field">Customer name<input type="text" id="svName" list="svCustomers" value="${esc(state.data.customer || "")}" placeholder="For example, Cohesity"></label>
+    <datalist id="svCustomers"></datalist>
+    <div class="upload-actions"><button class="btn primary" id="svGo">Save version</button><span class="hint" id="svMsg"></span></div>`;
+  vault.list().then(list => { $("#svCustomers").innerHTML = [...new Set(list.map(m => m.customer))].map(c => `<option value="${esc(c)}">`).join(""); }).catch(() => {});
+  $("#svClose").onclick = () => dlg.close();
+  $("#svGo").onclick = async () => {
+    const name = $("#svName").value.trim();
+    if (!name) { $("#svMsg").textContent = "Add the customer’s name."; $("#svName").focus(); return; }
+    $("#svGo").disabled = true; $("#svMsg").textContent = "Saving…";
+    state.baseData.customer = name; state.data.customer = name;
+    const data = snapshot(), savedAt = new Date().toISOString();
+    const meta = versionMeta(data, "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), savedAt);
+    try {
+      await vault.put(meta, data);
+      state.version = meta; dlg.close();
+      toast(`Saved ${name}, ${fmtStamp(savedAt)}`);
+      renderDashboard();
+    } catch (e) {
+      $("#svGo").disabled = false;
+      $("#svMsg").textContent = `Couldn’t save in this browser (${e.message}). Use “Download backup” on the start screen instead.`;
+    }
+  };
+  dlg.showModal();
+}
+function loadDataset(data, version) {
+  Object.assign(state, {
+    baseData: data, readOnly: false, sharedInfo: "", version: version || null,
+    tab: data.joined.length ? "overview" : "timeline", tlDay: null, workspace: "", selectedEvent: null, eventGroup: "",
+    range: { fromDate: "", fromTime: "", toDate: "", toTime: "" },
+    table: { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" },
+    picked: new Set(), snap: null, tz: ""
+  });
+  applyTz();
+  state.groups = data.groups && data.groups.length ? data.groups : loadGroups();
+  state.excluded = loadExcluded();
+  renderDashboard();
+}
+async function openVersion(id) {
+  try {
+    const [data, list] = await Promise.all([vault.get(id), vault.list()]);
+    if (!data) { toast("That version couldn’t be found."); return; }
+    loadDataset(data, list.find(m => m.id === id));
+  } catch (e) { toast("Couldn’t open that version: " + e.message); }
+}
+async function downloadBackup(id) {
+  const [data, list] = await Promise.all([vault.get(id), vault.list()]);
+  const meta = list.find(m => m.id === id);
+  if (!data || !meta) return;
+  const ok = await saveTextFile(`${meta.customer} - Wordly dashboard - ${stampForFile(meta.savedAt)}.json`,
+    JSON.stringify({ format: "wordly-dashboard", formatVersion: 1, meta, data }), "application/json");
+  if (ok) toast("Backup file downloaded.");
+}
+async function importBackup(file) {
+  try {
+    const j = JSON.parse(await file.text());
+    if (j.format !== "wordly-dashboard" || !j.data || !Array.isArray(j.data.joined)) throw new Error("this isn’t a Wordly dashboard backup file");
+    const meta = { ...versionMeta(j.data, j.meta?.id || "v" + Date.now().toString(36), j.meta?.savedAt || new Date().toISOString()), customer: j.meta?.customer || j.data.customer || "Untitled customer" };
+    try { await vault.put(meta, j.data); } catch { /* storage unavailable: open it without saving */ }
+    toast(`Opened ${meta.customer}, saved ${fmtStamp(meta.savedAt)}`);
+    loadDataset(j.data, meta);
+  } catch (e) { toast("Couldn’t open that file: " + e.message); }
+}
+async function renderLibrary() {
+  const box = $("#library");
+  if (!box) return;
+  const importHtml = `<div class="lib-foot"><button class="btn" id="importBtn">Open a backup file</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>`;
+  const wireImport = () => {
+    $("#importBtn").onclick = () => $("#importFile").click();
+    $("#importFile").onchange = e => { if (e.target.files[0]) importBackup(e.target.files[0]); };
+  };
+  let list;
+  try { list = await vault.list(); }
+  catch (e) {
+    box.innerHTML = `<h2 class="lib-h">Saved dashboards</h2><p class="hint">Saving isn’t available in this browser (${esc(e.message)}). You can still build dashboards, and open backup files.</p>${importHtml}`;
+    wireImport(); return;
+  }
+  const dl = $("#upCustomers");
+  if (dl) dl.innerHTML = [...new Set(list.map(m => m.customer))].map(c => `<option value="${esc(c)}">`).join("");
+  const groups = {};
+  list.forEach(m => { (groups[m.customer.toLowerCase()] ||= { name: m.customer, items: [] }).items.push(m); });
+  const custs = Object.values(groups);
+  box.innerHTML = `<h2 class="lib-h">Saved dashboards</h2>
+    ${custs.length ? custs.map(g => `<div class="lib-cust">
+      <div class="lib-name"><span>${esc(g.name)}</span><button class="link-btn" data-newver="${esc(g.name)}">Add new version</button></div>
+      <ul class="lib-list">${g.items.map(m => `<li>
+        <button class="lib-open" data-open="${m.id}">${esc(fmtStamp(m.savedAt))}</button>
+        <span class="lib-meta">${fmtN(m.sessions)} sessions${m.range ? `, ${esc(prettyDate(m.range[0]))} to ${esc(prettyDate(m.range[1]))}` : ""}</span>
+        <span class="lib-actions"><button class="link-btn" data-backup="${m.id}">Download backup</button><button class="link-btn danger" data-del="${m.id}">Delete</button></span>
+      </li>`).join("")}</ul></div>`).join("") : `<p class="hint">Dashboards you save show up here, grouped by customer, with the date and time of each version.</p>`}
+    ${importHtml}`;
+  wireImport();
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openVersion(b.dataset.open));
+  box.querySelectorAll("[data-backup]").forEach(b => b.onclick = () => downloadBackup(b.dataset.backup));
+  box.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    if (!b.dataset.confirm) { b.dataset.confirm = "1"; b.textContent = "Click again to delete"; return; }
+    await vault.remove(b.dataset.del); renderLibrary();
+  });
+  box.querySelectorAll("[data-newver]").forEach(b => b.onclick = () => {
+    state.uploadCustomer = b.dataset.newver;
+    const inp = $("#upCustomer"); if (inp) { inp.value = state.uploadCustomer; inp.focus(); }
+    toast(`Add ${state.uploadCustomer}’s new reports, then build and save.`);
+  });
+}
+async function fillVersionPicker() {
+  const sel = $("#verSel"), wrap = $("#verWrap");
+  if (!sel || state.readOnly) return;
+  try {
+    const list = await vault.list();
+    if (!list.length) return;
+    const here = String(state.data.customer || "").toLowerCase(), cur = state.version ? state.version.id : "";
+    const groups = {};
+    list.forEach(m => { (groups[m.customer] ||= []).push(m); });
+    const names = Object.keys(groups).sort((a, b) => (b.toLowerCase() === here) - (a.toLowerCase() === here) || a.localeCompare(b));
+    sel.innerHTML = (cur ? "" : `<option value="" selected>Current dashboard, not saved</option>`) +
+      names.map(c => `<optgroup label="${esc(c)}">${groups[c].map(m => `<option value="${m.id}" ${m.id === cur ? "selected" : ""}>${esc(fmtStamp(m.savedAt))}</option>`).join("")}</optgroup>`).join("");
+    wrap.hidden = false;
+    sel.onchange = () => { if (sel.value) openVersion(sel.value); };
+  } catch {}
+}
+
+/* ============================================================
+   Sharing (encrypted link) and file export
+   ============================================================ */
+const b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const toUrl = s => s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromUrl = s => { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return s; };
+async function streamBytes(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+const CHUNK = 200000;
+
+function snapshot() {
+  const { joined, unmatched, balances, customer, hasTx, hasWorkspace, hasConnection, totalUsage, range, timeline, transactions, accountSnapshot } = state.baseData;
+  const ex = state.excluded || new Set();
+  return {
+    joined: joined.filter(r => !ex.has(r.uid)), unmatched, balances, customer, hasTx, hasWorkspace, hasConnection, totalUsage, range,
+    timeline: timeline ? { ...timeline, items: timeline.items.filter(x => !ex.has(x.uid)) } : timeline,
+    transactions, accountSnapshot, groups: state.groups
+  };
+}
+
+// The key lives only in the link (after #), never in the database, so the
+// stored copy is unreadable without the exact link.
+async function createShare(title) {
+  const db = state.db;
+  let bytes = new TextEncoder().encode(JSON.stringify(snapshot()));
+  const gz = typeof CompressionStream !== "undefined";
+  if (gz) bytes = await streamBytes(bytes, new CompressionStream("gzip"));
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = b64(new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, bytes)));
+  const keyStr = toUrl(b64(new Uint8Array(await crypto.subtle.exportKey("raw", key))));
+  const id = toUrl(b64(crypto.getRandomValues(new Uint8Array(12))));
+  const parts = Math.ceil(ct.length / CHUNK);
+  for (let i = 0; i < parts; i++) await db.doc(`shared/${id}/parts/${i}`).set({ d: ct.slice(i * CHUNK, (i + 1) * CHUNK) });
+  await db.doc(`shared/${id}`).set({ v: 1, title, createdAt: new Date().toISOString(), parts, iv: b64(iv), gz, sessions: state.data.joined.length });
+  return `${SHARE_BASE}#${id}.${keyStr}`;
+}
+
+async function loadShare(token) {
+  const [id, keyStr] = token.split(".");
+  const db = state.db;
+  const meta = await db.doc(`shared/${id}`).get();
+  if (!meta.exists) throw new Error("not_found");
+  const m = meta.data();
+  const parts = await Promise.all(Array.from({ length: m.parts }, (_, i) => db.doc(`shared/${id}/parts/${i}`).get()));
+  if (parts.some(p => !p.exists)) throw new Error("incomplete");
+  const ct = parts.map(p => p.data().d).join("");
+  const key = await crypto.subtle.importKey("raw", unb64(fromUrl(keyStr)), "AES-GCM", false, ["decrypt"]);
+  let bytes = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(m.iv) }, key, unb64(ct)));
+  if (m.gz) bytes = await streamBytes(bytes, new DecompressionStream("gzip"));
+  return { data: JSON.parse(new TextDecoder().decode(bytes)), meta: m };
+}
+
+function toast(msg) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+function openShare() {
+  let dlg = $("#shareDlg");
+  if (!dlg) { dlg = document.createElement("dialog"); dlg.id = "shareDlg"; document.body.appendChild(dlg); }
+  dlg.innerHTML = `
+    <div class="dlg-head"><h2>Share this dashboard</h2><button class="remove" id="shareClose" aria-label="Close">×</button></div>
+    <p class="hint">Creates a link to an interactive copy of this dashboard, with all its charts and filters. Anyone with access to this page in Claude can open the link. The data is encrypted, so only people with this exact link can read it.</p>
+    <label class="field">Name shown on the shared dashboard<input type="text" id="shareTitle" value="${esc(state.data.customer || "")}"></label>
+    <div class="upload-actions"><button class="btn primary" id="shareGo">Create link</button><span class="hint" id="shareStatus"></span></div>
+    <div id="shareOut"></div>`;
+  $("#shareClose").onclick = () => dlg.close();
+  $("#shareGo").onclick = async () => {
+    const go = $("#shareGo"), status = $("#shareStatus");
+    go.disabled = true; status.textContent = "Creating link…";
+    try {
+      const link = await createShare($("#shareTitle").value.trim() || state.data.customer || "Wordly usage");
+      status.textContent = "Link created.";
+      $("#shareOut").innerHTML = `<div class="share-link"><input type="text" id="shareLink" readonly value="${esc(link)}" aria-label="Share link"><button class="btn primary" id="shareCopy">Copy link</button></div>
+        <p class="hint">Each link is a snapshot of the data as it is now. Create a new link after loading newer reports.</p>`;
+      $("#shareLink").onclick = e => e.target.select();
+      $("#shareCopy").onclick = async () => {
+        try { await navigator.clipboard.writeText(link); $("#shareCopy").textContent = "Copied"; }
+        catch { $("#shareLink").select(); $("#shareCopy").textContent = "Press Cmd+C or Ctrl+C"; }
+      };
+    } catch (e) {
+      console.error(e); go.disabled = false;
+      status.textContent = e?.code === "quota_exceeded" ? "Storage for shared links is full. Ask Claude to add a way to remove old links." : "Couldn’t create the link. Try again in a moment.";
+    }
+  };
+  dlg.showModal();
+}
+
+function slugify(s) { return String(s || "wordly").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "wordly"; }
+// Libraries: built into the page when this copy has them inline (the customer file), else from the CDN
+function libTags() {
+  const x = document.getElementById("lib-xlsx"), c = document.getElementById("lib-chart");
+  if (x && c && x.textContent.length > 1000) {
+    const safe = t => t.replace(/<\/script/gi, "<\\/script");
+    return `<script id="lib-xlsx">${safe(x.textContent)}<\/script>\n<script id="lib-chart">${safe(c.textContent)}<\/script>`;
+  }
+  return `<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>`;
+}
+function buildExportHtml() {
+  const embed = JSON.stringify({ data: snapshot(), exportedAt: new Date().toISOString() }).replace(/</g, "\\u003c");
+  const title = `${state.data.customer ? state.data.customer + " " : ""}Wordly usage dashboard`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${esc(title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+${libTags()}
+<style id="app-style">${$("#app-style").textContent}</style>
+</head>
+<body>
+${SHELL_HEADER}
+<main id="app"></main>
+<script>window.__WORDLY_EMBED__ = ${embed};<\/script>
+<script id="app-script">${$("#app-script").textContent}<\/script>
+</body>
+</html>`;
+}
+// File name from the report itself: customer (or main account) plus the report's date range
+function exportFilename() {
+  const d = state.baseData;
+  let name = d.customer || "";
+  if (!name || slugify(name) === "wordly") {
+    const acc = Object.entries(sumBy(d.joined, r => r.accountName || r.account, r => r.mins)).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (acc && acc !== "Unknown") name = acc.replace(/\s*\(\d+\)\s*$/, "");
+  }
+  const parts = ["wordly-dashboard"];
+  if (name) parts.push(slugify(name));
+  const r = d.range;
+  if (r) parts.push(r[0] === r[1] ? r[0] : `${r[0]}_to_${r[1]}`);
+  return parts.join("_") + ".html";
+}
+async function downloadFile() {
+  const html = buildExportHtml();
+  const filename = exportFilename();
+  const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
+  if (dl) {
+    try { await dl.save({ filename, data: html }); toast("Dashboard file saved."); }
+    catch (e) { if (e?.code !== "declined") toast("Couldn’t save the file here."); }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+}
+
+function enterReadOnly(data, info) {
+  Object.assign(state, {
+    baseData: data, tz: "", groups: data.groups || [], eventGroup: "", excluded: new Set(), picked: new Set(), readOnly: true, sharedInfo: info, tab: data.joined.length ? "overview" : "timeline", tlDay: null, workspace: "", selectedEvent: null,
+    range: { fromDate: "", fromTime: "", toDate: "", toTime: "" },
+    table: { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" }
+  });
+  applyTz();
+  renderDashboard();
+}
+function showMessage(msg) { $("#app").innerHTML = `<div class="panel empty" style="margin-top:40px">${esc(msg)}</div>`; }
+
+async function boot() {
+  const hasClaude = Boolean(window.claude && window.claude.use);
+  if (window.__WORDLY_EMBED__) {
+    const e = window.__WORDLY_EMBED__;
+    enterReadOnly(e.data, `Exported ${prettyDate(e.exportedAt.slice(0, 10))}`);
+    return;
+  }
+  const token = (location.hash || "").slice(1);
+  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    showMessage("Opening shared dashboard…");
+    const db = hasClaude ? await window.claude.use("db") : null;
+    if (!db) { showMessage("This shared dashboard opens in Claude. Sign in to claude.ai with an account that has access to this page, then open the link again."); return; }
+    state.db = db;
+    try {
+      const { data, meta } = await loadShare(token);
+      data.customer = meta.title || data.customer;
+      enterReadOnly(data, `Shared ${prettyDate(meta.createdAt.slice(0, 10))}`);
+    } catch (e) {
+      console.error(e);
+      showMessage("This link doesn’t open a dashboard. It may have been copied incompletely. Ask the person who shared it for a new link.");
+    }
+    return;
+  }
+  state.apiMode = await detectApi();
+  if (state.apiMode) await store.load();
+  if (state.apiMode) $("#restart").textContent = "Change customer";
+  renderUpload();
+  if (hasClaude) window.claude.use("db").then(db => { state.db = db; if (state.data && !state.readOnly) $("#shareBtn").hidden = !db; });
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+$("#restart").onclick = () => { state.files = []; state.data = null; renderUpload(); };
+$("#shareBtn").onclick = openShare;
+$("#exportBtn").onclick = downloadFile;
+$("#saveBtn").onclick = openSaveDialog;
+document.querySelectorAll("[data-unit]").forEach(b => b.onclick = () => {
+  state.unit = b.dataset.unit;
+  try { localStorage.setItem("wordly-unit", state.unit); } catch {}
+  if (state.data) renderDashboard();
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (state.data) renderDashboard(); });
+new MutationObserver(() => { if (state.data) renderDashboard(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+boot();
+</script>
+</body>
+</html>
