@@ -436,6 +436,52 @@
   .notice { border-radius: 0 var(--r) var(--r) 0; }
   .library, .drop, .file-list li { border-radius: var(--r); }
   @media (max-width: 1000px) { main { padding: 0 16px 40px; } .band { margin: 0 -16px 16px; padding: 0 16px; } .top-inner { padding: 8px 16px; } }
+
+  .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 0 12px; }
+  .chart-head h2.section { margin: 0; }
+  .chart-picker { position: relative; }
+  .chart-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 340px; max-width: calc(100vw - 32px); max-height: 560px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 8px 24px rgba(15, 30, 50, .14); padding: 10px 12px; }
+  .cm-note { margin: 2px 4px 6px; }
+  .cm-note.cm-warn { color: #B45F00; font-weight: 500; }
+  .cm-item { display: flex; gap: 10px; align-items: flex-start; padding: 7px 6px; border-radius: 4px; cursor: pointer; }
+  .cm-item:hover { background: var(--surface-2); }
+  .cm-item input { margin-top: 3px; }
+  .cm-item b { display: block; font-weight: 500; }
+  .cm-item small { color: var(--muted); font-size: 12px; }
+  .cm-foot { border-top: 1px solid var(--line); margin-top: 6px; padding: 8px 6px 2px; }
+  .panel h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .chart-x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 5px 2px; border-radius: 4px; }
+  .chart-x:hover { color: var(--text); background: var(--surface); }
+  .panel.add-chart { border: 1.5px dashed var(--line); background: transparent; min-height: 240px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-weight: 500; cursor: pointer; }
+  .panel.add-chart:hover { border-color: var(--blue); color: var(--blue); }
+  .panel.add-chart small { font-weight: 400; font-size: 12px; }
+
+  .cm-group { font-size: 12px; font-weight: 700; color: var(--muted); margin: 10px 6px 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .cm-note + .cm-group { border-top: 0; padding-top: 0; margin-top: 4px; }
+
+  .agenda-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 0 var(--r) var(--r) 0; padding: 12px 16px; margin-bottom: 16px; }
+  .agenda-bar b, .ap-head b { display: block; }
+  .ab-actions { display: flex; gap: 8px; }
+  .agenda-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 18px; }
+  .ap-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ap-settings { display: flex; gap: 10px 24px; flex-wrap: wrap; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+  .ap-settings label { display: flex; align-items: center; gap: 8px; }
+  .ap-map { margin-bottom: 12px; }
+  .ap-map summary { cursor: pointer; font-weight: 500; padding: 4px 0; }
+  .ap-map table { margin-top: 8px; }
+  .ap-map select { max-width: 420px; }
+  .ap-kpis { margin: 4px 0 14px; }
+  .ap-kpis .kpi .v { font-size: 22px; }
+  .ap-kpis .kpi:first-child .v { color: var(--text); }
+  .warn-v, .warn-t { color: #B4520A; }
+  .ap-h { font-size: 14px; margin: 16px 0 8px; }
+  .ap-foot { margin: 10px 0 0; }
+  .tl-sched { position: absolute; top: 5px; height: 34px; border: 1.5px dashed #8A96A6; background: rgba(138,150,166,.12); border-radius: 4px; z-index: 0; }
+  .tl-bar { z-index: 1; }
+  .tl-over { position: absolute; top: 10px; height: 24px; z-index: 2; pointer-events: none; border-radius: 3px; background: repeating-linear-gradient(135deg, #CD5500 0 4px, #F08A3C 4px 8px); opacity: .95; }
+  .tl-agenda-row .tl-title { color: var(--muted); font-weight: 500; }
+  .tl-key.sched { background: rgba(138,150,166,.12); border: 1.5px dashed #8A96A6; }
+  .tl-key.over { background: repeating-linear-gradient(135deg, #CD5500 0 3px, #F08A3C 3px 6px); }
 </style>
 </head>
 <body>
@@ -907,7 +953,7 @@ function build() {
     data.usageFiles = state.files.filter(f => f.kind === "usage").length;
     data.dupesRemoved = dupes;
     if (!state.pendingCustomer && state.uploadCustomer && state.uploadCustomer.trim()) data.customer = state.uploadCustomer.trim();
-    state.version = null;
+    state.version = null; state.agenda = null;
     if (state.pendingCustomer) { data.customer = state.pendingCustomer; data.source = "bigquery"; data.accountSnapshot = state.pendingAccounts && state.pendingAccounts.length ? state.pendingAccounts : null; }
     state.pendingAccounts = null; state.snap = null;
     state.pendingCustomer = null;
@@ -1062,67 +1108,233 @@ function renderOverview() {
       <div class="balance"><div class="acct">${esc(name)}</div><div class="email">${esc(b.email || "")}</div>
       <div class="left ${b.balance < 0 ? "neg" : ""}">${fmtM(b.balance)} <small>${u_()} left</small></div></div>`).join("")}</div>` : ""}
     ${d.hasWorkspace && !state.workspace ? workspaceTable(rows, totalMins) : ""}
-    <div class="grid2">
-      <div class="panel"><h3>${U_()} by month</h3><div class="chart-box"><canvas id="cMonth"></canvas></div></div>
-      <div class="panel"><h3>${U_()} by account</h3><div class="chart-box"><canvas id="cAcct"></canvas></div></div>
-      <div class="panel"><h3>Attendees by language</h3><div class="chart-box" id="langBox"><canvas id="cLang"></canvas></div></div>
-      <div class="panel"><h3>Sessions and attendees by month</h3><div class="chart-box"><canvas id="cSess"></canvas></div></div>
-      ${d.hasConnection ? `<div class="panel"><h3>${U_()} by connection</h3><div class="chart-box"><canvas id="cConn"></canvas></div></div>` : ""}
-    </div>`;
+    ${overviewChartsHtml(d)}`;
   document.querySelectorAll("[data-ws]").forEach(b => b.onclick = () => setWorkspace(b.dataset.ws));
+  wireOverviewCharts(d);
+  drawOverviewCharts(d, rows);
+}
 
+/* ============================================================
+   Overview charts: 4 defaults, optional extras, at most 4 open
+   ============================================================ */
+const OVERVIEW_DEFAULT = ["month", "account", "language", "sessmonth"];
+const OVERVIEW_MAX = 4;
+const CHART_GROUPS = ["Usage over time", "Sessions and attendees", "Languages", "Accounts and setup"];
+function chartCatalog(d) {
+  const G = CHART_GROUPS;
+  const hasBalances = (d.accountSnapshot && d.accountSnapshot.length) || (d.hasTx && Object.keys(d.balances || {}).length);
+  return [
+    { id: "month", g: G[0], title: () => `${U_()} by month`, desc: "Usage each month" },
+    { id: "cumulative", g: G[0], title: () => `Running total of ${u_()}`, desc: "How usage builds up over time" },
+    { id: "momchange", g: G[0], title: () => `Month-over-month change in ${u_()}`, desc: "Growth or decline versus the month before" },
+    { id: "weekly", g: G[0], title: () => `${U_()} by week`, desc: "A finer view than monthly totals" },
+    { id: "weekday", g: G[0], title: () => `${U_()} by day of the week`, desc: "Which days are busiest" },
+    { id: "busydays", g: G[0], title: () => "Busiest days", desc: `The 10 dates with the most ${u_()}` },
+    { id: "sessmonth", g: G[1], title: () => "Sessions and attendees by month", desc: "Activity each month" },
+    { id: "eventsmonth", g: G[1], title: () => "Events run each month", desc: "Distinct session titles per month" },
+    { id: "topevents", g: G[1], title: () => `Top 10 events by ${u_()}`, desc: "The largest events by usage" },
+    { id: "avgatt", g: G[1], title: () => "Average attendees per session", desc: "By month" },
+    { id: "attdist", g: G[1], title: () => "Session size", desc: "How many sessions had 1, 2–5, 6–20 attendees and so on" },
+    { id: "avglen", g: G[1], title: () => "Average session length", desc: "By month, in minutes of real duration" },
+    { id: "lengthdist", g: G[1], title: () => "Session length", desc: "How many sessions ran under 15 minutes, 15–30 and so on" },
+    { id: "hour", g: G[1], title: () => "Sessions by start time", desc: "Hour of the day sessions begin" },
+    { id: "language", g: G[2], title: () => "Attendees by language", desc: "The languages attendees chose" },
+    { id: "langmonth", g: G[2], title: () => "Language mix by month", desc: "Attendees per month, top 5 languages" },
+    { id: "langsper", g: G[2], title: () => "Languages per session", desc: "How many sessions used 1, 2, 3 or more languages" },
+    { id: "account", g: G[3], title: () => `${U_()} by account`, desc: "Each account’s share of usage" },
+    { id: "acctmonth", g: G[3], title: () => `${U_()} by account over time`, desc: "Monthly usage for the top 5 accounts" },
+    { id: "balance", g: G[3], title: () => `Remaining ${u_()} by account`, desc: "Lowest balances first", when: () => hasBalances },
+    { id: "connection", g: G[3], title: () => `${U_()} by connection`, desc: "Zoom, Teams, web and so on", when: d => d.hasConnection },
+    { id: "workspace", g: G[3], title: () => `${U_()} by workspace`, desc: "Each workspace’s share of usage", when: d => d.hasWorkspace },
+    { id: "label", g: G[3], title: () => `${U_()} by label`, desc: "Usage grouped by session label", when: d => d.joined.some(r => r.label) }
+  ].filter(c => !c.when || c.when(d));
+}
+function chosenCharts(d) {
+  let ids = OVERVIEW_DEFAULT;
+  try { const v = JSON.parse(localStorage.getItem("wordly-overview-charts")); if (Array.isArray(v)) ids = v; } catch {}
+  const avail = new Set(chartCatalog(d).map(c => c.id));
+  return ids.filter(id => avail.has(id)).slice(0, OVERVIEW_MAX);
+}
+function saveChosenCharts(ids, keepMenuOpen) {
+  try { localStorage.setItem("wordly-overview-charts", JSON.stringify(ids)); } catch {}
+  state.chartMenuOpen = Boolean(keepMenuOpen);
+  renderDashboard();
+}
+function overviewChartsHtml(d) {
+  const cat = chartCatalog(d), chosen = chosenCharts(d);
+  const byId = Object.fromEntries(cat.map(c => [c.id, c]));
+  const free = OVERVIEW_MAX - chosen.length;
+  return `
+    <div class="chart-head">
+      <h2 class="section">Charts</h2>
+      <div class="chart-picker">
+        <button class="btn" id="chartMenuBtn" aria-expanded="${Boolean(state.chartMenuOpen)}" aria-controls="chartMenu">Choose charts (${chosen.length} of ${OVERVIEW_MAX})</button>
+        <div class="chart-menu" id="chartMenu" ${state.chartMenuOpen ? "" : "hidden"}>
+          <p class="hint cm-note" id="cmNote">Show up to ${OVERVIEW_MAX} charts at a time.</p>
+          ${CHART_GROUPS.map(g => { const items = cat.filter(c => c.g === g); return items.length ? `<div class="cm-group">${esc(g)}</div>` + items.map(c => `<label class="cm-item"><input type="checkbox" data-pick="${c.id}" ${chosen.includes(c.id) ? "checked" : ""}><span><b>${esc(c.title())}</b><small>${esc(c.desc)}</small></span></label>`).join("") : ""; }).join("")}
+          <div class="cm-foot"><button class="link-btn" id="chartReset">Reset to the default charts</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid2">
+      ${chosen.map(id => `<div class="panel"><h3><span>${esc(byId[id].title())}</span><button class="chart-x" data-hide="${id}" aria-label="Hide ${esc(byId[id].title())}" title="Hide this chart">×</button></h3><div class="chart-box" id="box-${id}"><canvas id="c-${id}"></canvas></div></div>`).join("")}
+      ${free > 0 ? `<button class="panel add-chart" id="addChart"><span>Add a chart</span><small>${free} of ${OVERVIEW_MAX} slots free</small></button>` : ""}
+    </div>`;
+}
+let chartMenuListener = false;
+function wireOverviewCharts(d) {
+  const menu = $("#chartMenu"), btn = $("#chartMenuBtn");
+  const open = v => { menu.hidden = !v; btn.setAttribute("aria-expanded", String(v)); state.chartMenuOpen = v; };
+  btn.onclick = e => { e.stopPropagation(); open(menu.hidden); };
+  const add = $("#addChart"); if (add) add.onclick = e => { e.stopPropagation(); open(true); btn.scrollIntoView({ block: "nearest" }); };
+  menu.onclick = e => e.stopPropagation();
+  if (!chartMenuListener) {
+    chartMenuListener = true;
+    document.addEventListener("click", () => { const m = $("#chartMenu"); if (m && !m.hidden) { m.hidden = true; state.chartMenuOpen = false; $("#chartMenuBtn")?.setAttribute("aria-expanded", "false"); } });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { const m = $("#chartMenu"); if (m && !m.hidden) { m.hidden = true; state.chartMenuOpen = false; $("#chartMenuBtn")?.focus(); } } });
+  }
+  const chosen = chosenCharts(d);
+  menu.querySelectorAll("[data-pick]").forEach(cb => cb.onchange = () => {
+    const id = cb.dataset.pick;
+    if (cb.checked) {
+      if (chosen.length >= OVERVIEW_MAX) {
+        cb.checked = false;
+        const n = $("#cmNote"); n.textContent = `You can show ${OVERVIEW_MAX} charts at a time. Untick one to make room.`; n.classList.add("cm-warn");
+        return;
+      }
+      saveChosenCharts([...chosen, id], true);
+    } else saveChosenCharts(chosen.filter(x => x !== id), true);
+  });
+  $("#chartReset").onclick = () => saveChosenCharts(OVERVIEW_DEFAULT.slice(), true);
+  document.querySelectorAll("[data-hide]").forEach(b => b.onclick = () => saveChosenCharts(chosen.filter(x => x !== b.dataset.hide), false));
+}
+function drawOverviewCharts(d, rows) {
   chartDefaults();
   const blue = css("--blue");
   const rDates = rows.map(r => r.date).sort();
   const months = rDates.length ? monthsBetween(rDates[0].slice(0, 7), rDates[rDates.length - 1].slice(0, 7)) : [];
-  const mMins = sumBy(rows, r => r.date.slice(0, 7), r => r.mins);
-  const mSess = sumBy(rows, r => r.date.slice(0, 7), () => 1);
-  const mAtt = sumBy(rows, r => r.date.slice(0, 7), r => r.attendees);
   const labels = months.map(monthLabel);
+  const byMonth = f => sumBy(rows, r => r.date.slice(0, 7), f);
+  const mMins = byMonth(r => r.mins), mSess = byMonth(() => 1), mAtt = byMonth(r => r.attendees), mDur = byMonth(r => r.durSecs || 0);
   const tip = { callbacks: { label: c => `${c.dataset.label || c.label}: ${fmtCV(c.raw)}` } };
-
-  charts.month = new Chart($("#cMonth"), {
-    type: "bar",
-    data: { labels, datasets: [{ label: U_(), data: months.map(m => cv(mMins[m] || 0)), backgroundColor: blue, borderRadius: 4 }] },
-    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
-  });
-
-  const acct = Object.entries(sumBy(rows, r => r.account, r => r.mins)).sort((a, b) => b[1] - a[1]);
-  charts.acct = new Chart($("#cAcct"), {
+  const barOpts = (extra = {}) => ({ maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }, ...extra });
+  const hbarOpts = { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } }, x: { beginAtZero: true } } };
+  const donut = (pairs, offset = 0) => ({
     type: "doughnut",
-    data: { labels: acct.map(a => a[0]), datasets: [{ data: acct.map(a => cv(a[1])), backgroundColor: acct.map((_, i) => ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]), borderColor: css("--surface"), borderWidth: 2 }] },
+    data: { labels: pairs.map(a => a[0]), datasets: [{ data: pairs.map(a => cv(a[1])), backgroundColor: pairs.map((_, i) => ACCOUNT_COLORS[(i + offset) % ACCOUNT_COLORS.length]), borderColor: css("--surface"), borderWidth: 2 }] },
     options: { maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "right" }, tooltip: tip } }
   });
-
-  const langs = Object.entries(langTotals(rows)).sort((a, b) => b[1] - a[1]);
-  $("#langBox").style.height = Math.max(280, langs.length * 28 + 40) + "px";
-  charts.lang = new Chart($("#cLang"), {
-    type: "bar",
-    data: { labels: langs.map(l => l[0]), datasets: [{ label: "Attendees", data: langs.map(l => l[1]), backgroundColor: langs.map(l => langColor(l[0])), borderRadius: 4 }] },
-    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { y: { grid: { display: false } }, x: { beginAtZero: true } } }
+  const line = (label, data, color) => ({
+    type: "line",
+    data: { labels, datasets: [{ label, data, borderColor: color || blue, backgroundColor: color || blue, pointRadius: 3, tension: 0.25 }] },
+    options: barOpts()
   });
-
-  if (d.hasConnection) {
-    const conn = Object.entries(sumBy(rows, r => r.connection || "Not specified", r => r.mins)).sort((a, b) => b[1] - a[1]);
-    charts.conn = new Chart($("#cConn"), {
-      type: "doughnut",
-      data: { labels: conn.map(a => a[0]), datasets: [{ data: conn.map(a => cv(a[1])), backgroundColor: conn.map((_, i) => ACCOUNT_COLORS[(i + 3) % ACCOUNT_COLORS.length]), borderColor: css("--surface"), borderWidth: 2 }] },
-      options: { maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "right" }, tooltip: tip } }
-    });
-  }
-
-  charts.sess = new Chart($("#cSess"), {
-    type: "bar",
-    data: { labels, datasets: [
-      { label: "Sessions", data: months.map(m => mSess[m] || 0), backgroundColor: css("--blue-2"), yAxisID: "y", borderRadius: 4 },
-      { label: "Attendees", data: months.map(m => mAtt[m] || 0), backgroundColor: "#129737", yAxisID: "y1", borderRadius: 4 }
-    ] },
-    options: { maintainAspectRatio: false, plugins: { tooltip: tip }, scales: {
-      x: { grid: { display: false } },
-      y: { beginAtZero: true, position: "left", title: { display: true, text: "Sessions" } },
-      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Attendees" } }
-    } }
-  });
+  const short = s => (s || "").length > 30 ? s.slice(0, 29) + "…" : (s || "");
+  const builders = {
+    month: () => ({ type: "bar", data: { labels, datasets: [{ label: U_(), data: months.map(m => cv(mMins[m] || 0)), backgroundColor: blue, borderRadius: 3 }] }, options: barOpts() }),
+    account: () => donut(Object.entries(sumBy(rows, r => r.account, r => r.mins)).sort((a, b) => b[1] - a[1])),
+    language: () => {
+      const langs = Object.entries(langTotals(rows)).sort((a, b) => b[1] - a[1]);
+      $("#box-language").style.height = Math.max(280, langs.length * 28 + 40) + "px";
+      return { type: "bar", data: { labels: langs.map(l => l[0]), datasets: [{ label: "Attendees", data: langs.map(l => l[1]), backgroundColor: langs.map(l => langColor(l[0])), borderRadius: 3 }] }, options: hbarOpts };
+    },
+    sessmonth: () => ({
+      type: "bar",
+      data: { labels, datasets: [
+        { label: "Sessions", data: months.map(m => mSess[m] || 0), backgroundColor: css("--blue-2"), yAxisID: "y", borderRadius: 3 },
+        { label: "Attendees", data: months.map(m => mAtt[m] || 0), backgroundColor: "#129737", yAxisID: "y1", borderRadius: 3 }
+      ] },
+      options: { maintainAspectRatio: false, plugins: { tooltip: tip }, scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, position: "left", title: { display: true, text: "Sessions" } },
+        y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Attendees" } }
+      } }
+    }),
+    cumulative: () => { let run = 0; return line(U_(), months.map(m => cv(run += (mMins[m] || 0)))); },
+    avgatt: () => line("Attendees per session", months.map(m => mSess[m] ? Math.round((mAtt[m] / mSess[m]) * 10) / 10 : 0), "#129737"),
+    avglen: () => line("Minutes per session", months.map(m => mSess[m] ? Math.round(mDur[m] / mSess[m] / 60) : 0), "#128197"),
+    weekday: () => {
+      const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const by = sumBy(rows, r => (new Date(dayNum(r.date) * 86400000).getUTCDay() + 6) % 7, r => r.mins);
+      return { type: "bar", data: { labels: names, datasets: [{ label: U_(), data: names.map((_, i) => cv(by[i] || 0)), backgroundColor: blue, borderRadius: 3 }] }, options: barOpts() };
+    },
+    hour: () => {
+      const by = sumBy(rows, r => Math.floor((r.startSec || 0) / 3600), () => 1);
+      const hrs = [...Array(24).keys()];
+      return { type: "bar", data: { labels: hrs.map(h => fmtHour(h)), datasets: [{ label: "Sessions", data: hrs.map(h => by[h] || 0), backgroundColor: css("--blue-2"), borderRadius: 3 }] }, options: barOpts() };
+    },
+    topevents: () => {
+      const top = eventsByTitle(rows).sort((a, b) => b.minutes - a.minutes).slice(0, 10);
+      $("#box-topevents").style.height = Math.max(280, top.length * 28 + 40) + "px";
+      return { type: "bar", data: { labels: top.map(e => short(e.title)), datasets: [{ label: U_(), data: top.map(e => cv(e.minutes)), backgroundColor: blue, borderRadius: 3 }] }, options: hbarOpts };
+    },
+    connection: () => donut(Object.entries(sumBy(rows, r => r.connection || "Not specified", r => r.mins)).sort((a, b) => b[1] - a[1]), 3),
+    momchange: () => {
+      const ms = months.slice(1), diffs = ms.map((m, i) => (mMins[m] || 0) - (mMins[months[i]] || 0));
+      return { type: "bar", data: { labels: ms.map(monthLabel), datasets: [{ label: `Change in ${u_()}`, data: diffs.map(cv), backgroundColor: diffs.map(v => v >= 0 ? "#129737" : "#CD5500"), borderRadius: 3 }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tip }, scales: { x: { grid: { display: false } } } } };
+    },
+    weekly: () => {
+      const wk = r => { const n = dayNum(r.date); return n - ((new Date(n * 86400000).getUTCDay() + 6) % 7); };
+      const by = sumBy(rows, wk, r => r.mins), keys = Object.keys(by).map(Number).sort((a, b) => a - b);
+      const all = keys.length ? Array.from({ length: (keys[keys.length - 1] - keys[0]) / 7 + 1 }, (_, i) => keys[0] + i * 7) : [];
+      const lab = n => { const t = new Date(n * 86400000); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}`; };
+      return { type: "line", data: { labels: all.map(lab), datasets: [{ label: `${U_()}, week of`, data: all.map(n => cv(by[n] || 0)), borderColor: blue, backgroundColor: blue, pointRadius: 2, tension: 0.2 }] }, options: barOpts() };
+    },
+    busydays: () => {
+      const top = Object.entries(sumBy(rows, r => r.date, r => r.mins)).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      $("#box-busydays").style.height = Math.max(280, top.length * 28 + 40) + "px";
+      return { type: "bar", data: { labels: top.map(t => prettyDate(t[0])), datasets: [{ label: U_(), data: top.map(t => cv(t[1])), backgroundColor: blue, borderRadius: 3 }] }, options: hbarOpts };
+    },
+    eventsmonth: () => {
+      const by = {}; rows.forEach(r => { (by[r.date.slice(0, 7)] ||= new Set()).add(r.title); });
+      return { type: "bar", data: { labels, datasets: [{ label: "Events", data: months.map(m => by[m] ? by[m].size : 0), backgroundColor: "#128197", borderRadius: 3 }] }, options: barOpts() };
+    },
+    attdist: () => {
+      const bins = [["None", 0, 0], ["1", 1, 1], ["2–5", 2, 5], ["6–20", 6, 20], ["21–50", 21, 50], ["51–100", 51, 100], ["Over 100", 101, Infinity]];
+      const counts = bins.map(([, lo, hi]) => rows.filter(r => r.attendees >= lo && r.attendees <= hi).length);
+      const keep = bins.map((_, i) => i).filter(i => i > 0 || counts[0] > 0);
+      return { type: "bar", data: { labels: keep.map(i => bins[i][0]), datasets: [{ label: "Sessions", data: keep.map(i => counts[i]), backgroundColor: "#129737", borderRadius: 3 }] }, options: barOpts({ scales: { x: { grid: { display: false }, title: { display: true, text: "Attendees per session" } }, y: { beginAtZero: true } } }) };
+    },
+    lengthdist: () => {
+      const bins = [["Under 15 min", 0, 900], ["15–30 min", 900, 1800], ["30–60 min", 1800, 3600], ["1–2 hr", 3600, 7200], ["2–4 hr", 7200, 14400], ["Over 4 hr", 14400, Infinity]];
+      return { type: "bar", data: { labels: bins.map(b => b[0]), datasets: [{ label: "Sessions", data: bins.map(([, lo, hi]) => rows.filter(r => (r.durSecs || 0) >= lo && (r.durSecs || 0) < hi).length), backgroundColor: "#128197", borderRadius: 3 }] }, options: barOpts() };
+    },
+    langmonth: () => {
+      const tot = langTotals(rows), top = Object.entries(tot).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+      const per = {}; rows.forEach(r => { const m = r.date.slice(0, 7); Object.entries(r.languages).forEach(([l, v]) => { const k = top.includes(l) ? l : "Other"; ((per[k] ||= {})[m] = (per[k][m] || 0) + v); }); });
+      const keys = [...top, ...(per.Other ? ["Other"] : [])];
+      return { type: "bar", data: { labels, datasets: keys.map(k => ({ label: k, data: months.map(m => (per[k] || {})[m] || 0), backgroundColor: k === "Other" ? "#9AA4B1" : langColor(k) })) },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: tip }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } };
+    },
+    langsper: () => {
+      const labs = ["None", "1", "2", "3", "4", "5 or more"];
+      const counts = [0, 0, 0, 0, 0, 0];
+      rows.forEach(r => { const n = Object.keys(r.languages).length; counts[Math.min(n, 5)]++; });
+      const keep = labs.map((_, i) => i).filter(i => i > 0 || counts[0] > 0);
+      return { type: "bar", data: { labels: keep.map(i => labs[i]), datasets: [{ label: "Sessions", data: keep.map(i => counts[i]), backgroundColor: css("--blue-2"), borderRadius: 3 }] }, options: barOpts({ scales: { x: { grid: { display: false }, title: { display: true, text: "Languages used" } }, y: { beginAtZero: true } } }) };
+    },
+    acctmonth: () => {
+      const top = Object.entries(sumBy(rows, r => r.account, r => r.mins)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+      const per = {}; rows.forEach(r => { const k = top.includes(r.account) ? r.account : "Other"; const m = r.date.slice(0, 7); ((per[k] ||= {})[m] = (per[k][m] || 0) + r.mins); });
+      const keys = [...top, ...(per.Other ? ["Other"] : [])];
+      return { type: "bar", data: { labels, datasets: keys.map((k, i) => ({ label: short(k), data: months.map(m => cv((per[k] || {})[m] || 0)), backgroundColor: k === "Other" ? "#9AA4B1" : ACCOUNT_COLORS[i % ACCOUNT_COLORS.length] })) },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: tip }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } } };
+    },
+    balance: () => {
+      const snap = d.accountSnapshot || [];
+      const pairs = (snap.length ? snap.map(a => [a.portal_account_name, a.Available_Mins]) : Object.entries(d.balances).map(([n, b]) => [n, b.balance])).sort((a, b) => a[1] - b[1]).slice(0, 10);
+      $("#box-balance").style.height = Math.max(280, pairs.length * 28 + 40) + "px";
+      return { type: "bar", data: { labels: pairs.map(p => short(p[0])), datasets: [{ label: `${U_()} left`, data: pairs.map(p => cv(p[1])), backgroundColor: pairs.map(p => p[1] < 0 ? "#CD5500" : css("--blue-2")), borderRadius: 3 }] }, options: hbarOpts };
+    },
+    label: () => {
+      const all = Object.entries(sumBy(rows, r => r.label || "No label", r => r.mins)).sort((a, b) => b[1] - a[1]);
+      const top = all.slice(0, 7), rest = all.slice(7).reduce((t, x) => t + x[1], 0);
+      return donut(rest ? [...top, ["Other", rest]] : top, 2);
+    },
+    workspace: () => donut(Object.entries(sumBy(rows, r => r.workspace || "No workspace", r => r.mins)).sort((a, b) => b[1] - a[1]), 5)
+  };
+  chosenCharts(d).forEach(id => { const cvs = $("#c-" + id); if (cvs && builders[id]) charts["ov_" + id] = new Chart(cvs, builders[id]()); });
 }
 
 function workspaceTable(rows, totalMins) {
@@ -1397,39 +1609,277 @@ function timelineDays(items) {
   if (r.toDate) list = list.filter(n => n <= dayNum(r.toDate));
   return list.map(n => ({ n, count: days[n] }));
 }
+/* ============================================================
+   Agenda comparison: when Wordly was scheduled vs. when it ran
+   ============================================================ */
+const AGENDA_ANY = "*";
+function utcToDisplay(utc) {
+  if (state.tz) return utc + zoneOffset(state.tz, utc);
+  const off = TZ_OFFSETS[String(sourceZone(state.baseData)).toUpperCase()];
+  return off != null ? utc + off * 3600 : utc;
+}
+function localToUtc(local, zone) {
+  const off = TZ_OFFSETS[String(zone || "").toUpperCase()];
+  if (off != null) return local - off * 3600;
+  if (zone && zone.includes("/")) { let u = local - zoneOffset(zone, local); return local - zoneOffset(zone, u); }
+  return local;
+}
+function subtractIntervals(a, b) {
+  const out = [];
+  for (const [s0, e0] of a) {
+    let s = s0;
+    for (const [bs, be] of b) {
+      if (be <= s || bs >= e0) continue;
+      if (bs > s) out.push([s, Math.min(bs, e0)]);
+      s = Math.max(s, be);
+      if (s >= e0) break;
+    }
+    if (s < e0) out.push([s, e0]);
+  }
+  return out;
+}
+function mergeRaw(iv) {
+  const sorted = iv.filter(([s, e]) => e > s).sort((x, y) => x[0] - y[0]), out = [];
+  for (const [s, e] of sorted) { const l = out[out.length - 1]; if (l && s <= l[1]) l[1] = Math.max(l[1], e); else out.push([s, e]); }
+  return out;
+}
+const sumIv = iv => iv.reduce((t, [s, e]) => t + e - s, 0);
+function agendaView() {
+  const ag = state.agenda;
+  if (!ag || !ag.items || !ag.items.length) return null;
+  const items = ag.items.map(it => ({ ...it, start: utcToDisplay(localToUtc(it.startLocal, ag.zone)), end: utcToDisplay(localToUtc(it.endLocal, ag.zone)) }));
+  const mapped = Object.values(ag.map || {});
+  return { ...ag, items, anyStar: mapped.includes(AGENDA_ANY), compared: new Set(mapped.filter(v => v && v !== AGENDA_ANY)) };
+}
+function wordlyLanesForDay(items, n) {
+  const d0 = n * 86400, d1 = d0 + 86400, by = {};
+  items.filter(x => x.start < d1 && x.end > d0).forEach(x => (by[x.title] ||= []).push(x));
+  return Object.entries(by).map(([title, xs]) => ({ title, xs, merged: mergeIntervals(xs, d0, d1) }));
+}
+// For one day: scheduled blocks per Wordly lane, Wordly time outside the agenda, agenda rows with no lane
+function agendaDay(n, ag, lanes) {
+  const d0 = n * 86400, d1 = d0 + 86400, g = (ag.grace || 0) * 60;
+  const titles = lanes.map(l => l.title), laneSched = {}, extra = {};
+  ag.items.forEach(a => {
+    if (a.end <= d0 || a.start >= d1) return;
+    const iv = [Math.max(a.start, d0), Math.min(a.end, d1), a];
+    const tgt = ag.map[a.key];
+    if (tgt === AGENDA_ANY) { titles.forEach(t => (laneSched[t] ||= []).push(iv)); (extra[a.key] ||= { tgt, iv: [] }).iv.push(iv); }
+    else if (tgt && titles.includes(tgt)) (laneSched[tgt] ||= []).push(iv);
+    else (extra[a.key] ||= { tgt, iv: [] }).iv.push(iv);
+  });
+  const laneOutside = {}, laneStats = {};
+  lanes.forEach(l => {
+    if (!(ag.anyStar || ag.compared.has(l.title))) return;
+    const sched = mergeRaw((laneSched[l.title] || []).map(([s, e]) => [s, e]));
+    const withGrace = mergeRaw(sched.map(([s, e]) => [Math.max(d0, s - g), Math.min(d1, e + g)]));
+    laneOutside[l.title] = subtractIntervals(l.merged, withGrace);
+    laneStats[l.title] = { sched: sumIv(sched), active: sumIv(l.merged), outside: sumIv(laneOutside[l.title]), missed: sumIv(subtractIntervals(sched, l.merged)) };
+  });
+  // Agenda rooms paired with a Wordly session that didn't run this day: all scheduled time is uncovered
+  Object.entries(extra).forEach(([key, x]) => {
+    if (x.tgt && x.tgt !== AGENDA_ANY && !titles.includes(x.tgt)) {
+      const s = sumIv(mergeRaw(x.iv.map(([a, b]) => [a, b])));
+      const st = (laneStats[x.tgt] ||= { sched: 0, active: 0, outside: 0, missed: 0 });
+      st.sched += s; st.missed += s;
+    }
+  });
+  return { laneSched, laneOutside, laneStats, extra };
+}
+function agendaTotals(items, ag, dayList) {
+  const per = {}, stretches = [];
+  let schedAll = 0;
+  dayList.forEach(({ n }) => {
+    const lanes = wordlyLanesForDay(items, n), r = agendaDay(n, ag, lanes), d0 = n * 86400;
+    schedAll += sumIv(mergeRaw(ag.items.filter(a => a.end > d0 && a.start < d0 + 86400).map(a => [Math.max(a.start, d0), Math.min(a.end, d0 + 86400)])));
+    Object.entries(r.laneStats).forEach(([t, s]) => { const p = (per[t] ||= { sched: 0, active: 0, outside: 0, missed: 0 }); for (const k in s) p[k] += s[k]; });
+    Object.entries(r.laneOutside).forEach(([t, iv]) => iv.forEach(([s, e]) => stretches.push({ n, title: t, s: s - d0, e: e - d0 })));
+  });
+  const sum = k => Object.values(per).reduce((t, p) => t + p[k], 0);
+  stretches.sort((a, b) => (b.e - b.s) - (a.e - a.s));
+  return { per, schedAll, active: sum("active"), outside: sum("outside"), missed: sum("missed"), stretches: stretches.slice(0, 10) };
+}
+function guessAgendaMap(keys) {
+  const titles = [...new Set((state.data.timeline?.items || []).map(x => x.title))];
+  const toks = s => new Set(String(s).toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 1 || /\d/.test(t)));
+  const map = {};
+  keys.forEach(k => {
+    if (k === "Agenda") { map[k] = AGENDA_ANY; return; }
+    const kl = k.toLowerCase(), kt = toks(k);
+    let best = "", score = 0;
+    titles.forEach(t => {
+      let sc = 0;
+      if (t.toLowerCase().includes(kl)) sc = 1;
+      else { const tt = toks(t); const inter = [...kt].filter(x => tt.has(x)).length; sc = kt.size ? inter / kt.size : 0; }
+      if (sc > score) { score = sc; best = t; }
+    });
+    map[k] = score >= 0.6 ? best : (titles.length === 1 ? titles[0] : "");
+  });
+  return map;
+}
+async function importAgenda(file) {
+  try {
+    const rows = await readSheet(file);
+    let hi = -1, cols = null;
+    for (let i = 0; i < Math.min(rows.length, 15); i++) {
+      const h = (rows[i] || []).map(norm);
+      const find = (exact, contains) => {
+        for (const k of exact) { const j = h.indexOf(k); if (j >= 0) return j; }
+        for (const k of contains) { const j = h.findIndex(x => x && x.includes(k)); if (j >= 0) return j; }
+        return -1;
+      };
+      const start = find(["start", "start time", "starts", "begin", "from", "time"], ["start", "begin"]);
+      if (start < 0) continue;
+      let end = find(["end", "end time", "ends", "finish", "until", "to"], ["end time", "finish"]);
+      if (end === start) end = -1;
+      cols = {
+        start, end,
+        date: find(["date", "day"], ["date"]),
+        dur: find([], ["duration", "length (min", "minutes"]),
+        title: find(["session", "title", "name", "topic", "event", "session name", "session title"], ["session", "title", "topic"]),
+        room: find(["room", "location", "track", "stage", "venue", "hall"], ["room", "location", "track", "stage", "venue", "hall"])
+      };
+      hi = i; break;
+    }
+    if (hi < 0) throw new Error("no start time column was found. Use the template for the expected columns.");
+    const items = [];
+    for (const r of rows.slice(hi + 1)) {
+      if (!r) continue;
+      const sv = r[cols.start];
+      if (sv == null || sv === "") continue;
+      const date = parseDate(cols.date >= 0 && r[cols.date] != null && r[cols.date] !== "" ? r[cols.date] : sv);
+      const st = parseTime(sv);
+      if (!date || st == null) continue;
+      let en = cols.end >= 0 ? parseTime(r[cols.end]) : null;
+      let endLocal = null;
+      const startLocal = dayNum(date) * 86400 + st;
+      if (en != null) { endLocal = dayNum(date) * 86400 + en; if (endLocal <= startLocal) endLocal += 86400; }
+      else if (cols.dur >= 0 && r[cols.dur] != null) {
+        const v = r[cols.dur]; const secs = typeof v === "number" ? v * 60 : (parseDuration(v) || num(v) * 60);
+        if (secs > 0) endLocal = startLocal + secs;
+      }
+      if (endLocal == null) continue;
+      const title = cols.title >= 0 && r[cols.title] != null ? String(r[cols.title]).trim() : "";
+      const room = cols.room >= 0 && r[cols.room] != null ? String(r[cols.room]).trim() : "";
+      items.push({ title: title || "Scheduled session", room, key: room || "Agenda", startLocal, endLocal });
+    }
+    if (!items.length) throw new Error("no rows had a readable date, start time and end time.");
+    const keys = [...new Set(items.map(i => i.key))];
+    state.agenda = { file: file.name, zone: state.tz || sourceZone(state.baseData) || "", grace: 10, items, map: guessAgendaMap(keys) };
+    toast(`Agenda added: ${items.length} scheduled ${items.length === 1 ? "session" : "sessions"}.`);
+  } catch (e) {
+    toast("Couldn’t read that agenda: " + e.message);
+  }
+  renderDashboard();
+}
+function downloadAgendaTemplate() {
+  saveTextFile("Wordly agenda template.csv",
+    "Date,Start time,End time,Session,Room\n2026-10-22,09:00,10:30,Opening keynote,Main Hall\n2026-10-22,11:00,12:00,Product roadmap breakout,Room 2\n2026-10-22,13:00,14:00,Customer panel,Room 2\n",
+    "text/csv");
+}
+function agendaPanelHtml(ag, items, allDays) {
+  const fileInput = `<input type="file" id="agFile" accept=".xlsx,.xls,.csv" hidden>`;
+  if (!ag) return `<div class="agenda-bar">
+      <div><b>Compare with the event agenda</b><span class="hint">Add the agenda to see when Wordly ran outside scheduled sessions, such as over lunch or overnight.</span></div>
+      <div class="ab-actions"><button class="btn" id="agTemplate">Download template</button><button class="btn" id="agAdd">Add agenda</button>${fileInput}</div>
+    </div>`;
+  const t = agendaTotals(items, ag, allDays);
+  const titles = [...new Set((state.data.timeline?.items || []).map(x => x.title))].sort();
+  const keys = [...new Set(ag.items.map(i => i.key))];
+  const zones = [...new Set([ag.zone, sourceZone(state.baseData), ...TZ_CHOICES.map(z => z[0])].filter(Boolean))];
+  const zoneLabel = z => { const c = TZ_CHOICES.find(x => x[0] === z); return c ? `${c[1]} (${zoneAbbr(z, Date.now() / 1000)})` : z; };
+  const dur = s => s ? fmtDuration(s) : "0m";
+  const lanes = Object.entries(t.per).sort((a, b) => b[1].outside - a[1].outside);
+  return `<section class="agenda-panel">
+    <div class="ap-head">
+      <div><b>Agenda comparison</b><span class="hint">${esc(ag.file)}, ${ag.items.length} scheduled ${ag.items.length === 1 ? "session" : "sessions"}</span></div>
+      <div class="ab-actions"><button class="btn" id="agAdd">Replace agenda</button><button class="btn" id="agRemove">Remove</button>${fileInput}</div>
+    </div>
+    <div class="ap-settings">
+      <label>Agenda times are in <select id="agZone">${zones.map(z => `<option value="${esc(z)}" ${z === ag.zone ? "selected" : ""}>${esc(zoneLabel(z))}</option>`).join("")}</select></label>
+      <label>Allow Wordly to start or end within <select id="agGrace">${[0, 5, 10, 15, 30].map(g => `<option value="${g}" ${g === ag.grace ? "selected" : ""}>${g} minutes</option>`).join("")}</select> of a session</label>
+    </div>
+    <details class="ap-map" ${keys.some(k => !ag.map[k]) ? "open" : ""}><summary>Match agenda rooms to Wordly sessions (${keys.filter(k => ag.map[k]).length} of ${keys.length} matched)</summary>
+      <table class="data"><thead><tr><th>Agenda room</th><th>Compare with</th></tr></thead><tbody>
+      ${keys.map((k, i) => `<tr><td>${esc(k === "Agenda" ? "All agenda sessions" : k)}</td><td><select data-agmap="${i}">
+        <option value="${AGENDA_ANY}" ${ag.map[k] === AGENDA_ANY ? "selected" : ""}>Any Wordly session</option>
+        ${titles.map(tt => `<option value="${esc(tt)}" ${ag.map[k] === tt ? "selected" : ""}>${esc(tt)}</option>`).join("")}
+        <option value="" ${!ag.map[k] ? "selected" : ""}>Don’t compare</option>
+      </select></td></tr>`).join("")}
+      </tbody></table></details>
+    <div class="kpis ap-kpis">
+      <div class="kpi"><div class="v">${dur(t.schedAll)}</div><div class="l">Scheduled in the agenda</div></div>
+      <div class="kpi"><div class="v">${dur(t.active)}</div><div class="l">Wordly running, matched sessions</div></div>
+      <div class="kpi"><div class="v ${t.outside ? "warn-v" : ""}">${dur(t.outside)}</div><div class="l">Running outside the agenda</div></div>
+      <div class="kpi"><div class="v">${dur(t.missed)}</div><div class="l">Scheduled with no Wordly running</div></div>
+    </div>
+    ${lanes.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Wordly session</th><th class="num">Scheduled</th><th class="num">Running</th><th class="num">Outside the agenda</th><th class="num">Not covered</th></tr></thead><tbody>
+      ${lanes.map(([tt, p]) => `<tr><td class="wrap">${esc(tt)}</td><td class="num">${dur(p.sched)}</td><td class="num">${dur(p.active)}</td><td class="num ${p.outside ? "warn-v" : ""}"><b>${dur(p.outside)}</b></td><td class="num">${dur(p.missed)}</td></tr>`).join("")}
+    </tbody></table></div>` : `<p class="hint">Match at least one agenda room to a Wordly session to compare them.</p>`}
+    ${t.stretches.length ? `<h3 class="ap-h">Longest stretches outside the agenda</h3>
+      <div class="table-wrap"><table class="data"><thead><tr><th>Date</th><th>Wordly session</th><th>From</th><th>To</th><th class="num">Length</th></tr></thead><tbody>
+      ${t.stretches.map(x => `<tr><td>${prettyDate(dayToStr(x.n))}</td><td class="wrap">${esc(x.title)}</td><td>${fmtClock(x.s)}</td><td>${x.e >= 86400 ? "midnight" : fmtClock(x.e)}</td><td class="num"><b>${fmtDuration(x.e - x.s)}</b></td></tr>`).join("")}
+      </tbody></table></div>` : ""}
+    <p class="hint ap-foot">Covers ${allDays.length} ${allDays.length === 1 ? "day" : "days"} in the current filters. Times are shown in ${esc(state.data.timeline?.zone || "the report’s time zone")}.</p>
+  </section>`;
+}
+function wireAgendaPanel() {
+  const f = $("#agFile");
+  const add = $("#agAdd"); if (add) add.onclick = () => f.click();
+  if (f) f.onchange = e => { if (e.target.files[0]) importAgenda(e.target.files[0]); };
+  const tp = $("#agTemplate"); if (tp) tp.onclick = downloadAgendaTemplate;
+  const rm = $("#agRemove"); if (rm) rm.onclick = () => { state.agenda = null; renderDashboard(); };
+  const z = $("#agZone"); if (z) z.onchange = e => { state.agenda.zone = e.target.value; renderDashboard(); };
+  const g = $("#agGrace"); if (g) g.onchange = e => { state.agenda.grace = +e.target.value; renderDashboard(); };
+  const keys = state.agenda ? [...new Set(state.agenda.items.map(i => i.key))] : [];
+  document.querySelectorAll("[data-agmap]").forEach(s => s.onchange = () => { state.agenda.map[keys[+s.dataset.agmap]] = s.value; renderDashboard(); });
+}
+
 function renderTimeline() {
   const tl = state.data.timeline || { items: [], zone: "" }, zone = tl.zone;
-  const items = timelineItems(), allDays = timelineDays(items);
-  if (!allDays.length) { $("#view").innerHTML = `<div class="panel empty">No session activity in this window. Widen the dates or clear the filters to see more.</div>`; return; }
+  const items = timelineItems(), ag = agendaView();
+  const allDays = timelineDays(items);
+  if (ag) {
+    const r = state.range, have = new Set(allDays.map(x => x.n));
+    ag.items.forEach(a => {
+      for (let n = Math.floor(a.start / 86400); n <= Math.floor((a.end - 1) / 86400); n++) {
+        if ((r.fromDate && n < dayNum(r.fromDate)) || (r.toDate && n > dayNum(r.toDate)) || have.has(n)) continue;
+        have.add(n); allDays.push({ n, count: 0 });
+      }
+    });
+    allDays.sort((a, b) => a.n - b.n);
+  }
+  const panel = agendaPanelHtml(ag, items, allDays);
+  if (!allDays.length) {
+    $("#view").innerHTML = panel + `<div class="panel empty">No session activity in this window. Widen the dates or clear the filters to see more.</div>`;
+    wireAgendaPanel(); return;
+  }
   const limit = state.tlShowAll ? allDays.length : Math.min(allDays.length, 31);
   const days = allDays.slice(0, limit);
 
-  // Build each day's lanes
   const blocks = days.map(({ n }) => {
     const d0 = n * 86400, d1 = d0 + 86400;
     const dayItems = items.filter(x => x.start < d1 && x.end > d0);
-    const byTitle = {};
-    dayItems.forEach(x => (byTitle[x.title] ||= []).push(x));
-    const lanes = Object.entries(byTitle).map(([title, xs]) => {
-      const merged = mergeIntervals(xs, d0, d1);
-      return { title, xs: xs.sort((a, b) => a.start - b.start), merged, first: merged[0][0], active: merged.reduce((a, [s, e]) => a + e - s, 0) };
-    }).sort((a, b) => a.first - b.first);
+    const lanes = wordlyLanesForDay(items, n).map(l => ({ ...l, xs: l.xs.sort((a, b) => a.start - b.start), first: l.merged[0][0], active: sumIv(l.merged) })).sort((a, b) => a.first - b.first);
     const ev = [];
     lanes.forEach(l => l.merged.forEach(([s, e]) => { ev.push([s, 1], [e, -1]); }));
     ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     let cur = 0, peak = 0, peakAt = d0;
     ev.forEach(([t, dlt]) => { cur += dlt; if (cur > peak) { peak = cur; peakAt = t; } });
-    return { n, d0, d1, dayItems, lanes, peak, peakAt, total: lanes.reduce((a, l) => a + l.active, 0) };
+    const cmp = ag ? agendaDay(n, ag, lanes) : null;
+    const outside = cmp ? Object.values(cmp.laneOutside).reduce((t, iv) => t + sumIv(iv), 0) : 0;
+    return { n, d0, d1, dayItems, lanes, peak, peakAt, total: lanes.reduce((a, l) => a + l.active, 0), cmp, outside };
   });
 
-  // One shared window so every day lines up
   let w0 = 0, w1 = 86400;
   if (state.tlView === "active") {
-    const s = Math.min(...blocks.flatMap(b => b.lanes.map(l => l.merged[0][0] - b.d0)));
-    const e = Math.max(...blocks.flatMap(b => b.lanes.map(l => l.merged[l.merged.length - 1][1] - b.d0)));
-    w0 = Math.max(0, Math.floor(s / 3600) * 3600 - 3600);
-    w1 = Math.min(86400, Math.ceil(e / 3600) * 3600 + 3600);
-    if (w1 - w0 < 7200) { w1 = Math.min(86400, w0 + 7200); w0 = Math.max(0, w1 - 7200); }
+    const ivs = blocks.flatMap(b => [...b.lanes.flatMap(l => l.merged), ...(b.cmp ? Object.values(b.cmp.extra).flatMap(x => x.iv) : [])].map(([s, e]) => [s - b.d0, e - b.d0]));
+    if (ivs.length) {
+      const s = Math.min(...ivs.map(x => x[0])), e = Math.max(...ivs.map(x => x[1]));
+      w0 = Math.max(0, Math.floor(s / 3600) * 3600 - 3600);
+      w1 = Math.min(86400, Math.ceil(e / 3600) * 3600 + 3600);
+      if (w1 - w0 < 7200) { w1 = Math.min(86400, w0 + 7200); w0 = Math.max(0, w1 - 7200); }
+    }
   }
   const span = w1 - w0, pct = sec => ((sec - w0) / span) * 100;
   const hours = span / 3600, step = hours <= 8 ? 1 : hours <= 14 ? 2 : 3;
@@ -1448,26 +1898,37 @@ function renderTimeline() {
   const hasUnbilled = allShown.some(x => x.mins === 0);
   const hasBilled = allShown.some(x => x.mins == null || x.mins > 0);
   const titles = new Set(allShown.map(x => x.title));
+  const seg = (s, e, d0) => `left:${pct(Math.max(s, d0 + w0) - d0)}%;width:${((Math.min(e, d0 + w1) - Math.max(s, d0 + w0)) / span) * 100}%`;
+  const schedHtml = (ivs, d0) => ivs.filter(([s, e]) => e > d0 + w0 && s < d0 + w1).map(([s, e, a]) => `<span class="tl-sched" style="${seg(s, e, d0)}" title="${esc(`Scheduled: ${a.title}${a.room ? `, ${a.room}` : ""}, ${fmtClock(a.start - Math.floor(a.start / 86400) * 86400)} to ${fmtClock(a.end - Math.floor(a.end / 86400) * 86400)}`)}"></span>`).join("");
+  const overHtml = (ivs, d0) => (ivs || []).filter(([s, e]) => e > d0 + w0 && s < d0 + w1).map(([s, e]) => `<span class="tl-over" style="${seg(s, e, d0)}" title="${esc(`Running outside the agenda: ${fmtClock(s - d0)} to ${e - d0 >= 86400 ? "midnight" : fmtClock(e - d0)} (${fmtDuration(e - s)})`)}"></span>`).join("");
+
+  const laneRow = (b, l) => `<div class="tl-row">
+      <div class="tl-label"><span class="tl-title" title="${esc(l.title)}">${esc(l.title)}</span><span class="tl-sub">${fmtDurLong(l.active)} active${b.cmp && b.cmp.laneOutside[l.title] && sumIv(b.cmp.laneOutside[l.title]) ? `, <span class="warn-t">${fmtDuration(sumIv(b.cmp.laneOutside[l.title]))} outside the agenda</span>` : ""}</span></div>
+      <div class="tl-track">${grid}${b.cmp ? schedHtml(b.cmp.laneSched[l.title] || [], b.d0) : ""}${l.xs.map(x => {
+        const i = state.tlDescribe.push(describe(x)) - 1;
+        const s = Math.max(x.start, b.d0) - b.d0, e = Math.min(x.end, b.d1) - b.d0;
+        const cls = ["tl-bar", x.mins === 0 ? "unbilled" : "", x.start < b.d0 ? "from-prev" : "", x.end > b.d1 ? "to-next" : ""].filter(Boolean).join(" ");
+        return `<button class="${cls}" data-i="${i}" style="left:${pct(s)}%;width:${((e - s) / span) * 100}%" aria-label="${esc(state.tlDescribe[i])}"></button>`;
+      }).join("")}${b.cmp ? overHtml(b.cmp.laneOutside[l.title], b.d0) : ""}</div>
+    </div>`;
+  const extraRows = b => !b.cmp ? "" : Object.entries(b.cmp.extra).map(([key, x]) => `<div class="tl-row tl-agenda-row">
+      <div class="tl-label"><span class="tl-title">Agenda: ${esc(key === "Agenda" ? "all sessions" : key)}</span><span class="tl-sub">${x.tgt === AGENDA_ANY ? "Scheduled sessions" : x.tgt ? "No Wordly session ran" : "Not compared"}</span></div>
+      <div class="tl-track">${grid}${schedHtml(x.iv, b.d0)}</div>
+    </div>`).join("");
 
   const dayHtml = b => `
     <section class="tl-day">
       <div class="tl-day-head"><h3>${prettyDate(dayToStr(b.n))}</h3>
-        <span class="hint">${b.lanes.length} ${b.lanes.length === 1 ? "event" : "events"}, ${fmtDurLong(b.total)} active${b.peak > 1 ? `, up to ${b.peak} at once from ${fmtClock(b.peakAt - b.d0)}` : ""}</span></div>
+        <span class="hint">${b.lanes.length ? `${b.lanes.length} ${b.lanes.length === 1 ? "event" : "events"}, ${fmtDurLong(b.total)} active${b.peak > 1 ? `, up to ${b.peak} at once from ${fmtClock(b.peakAt - b.d0)}` : ""}` : "No Wordly sessions"}${b.outside ? `, <span class="warn-t">${fmtDuration(b.outside)} outside the agenda</span>` : ""}</span></div>
       <div class="tl-scroll"><div class="tl">
         <div class="tl-axis"><div class="tl-label-head">Event</div><div class="tl-track tl-ticks">${ticks}</div></div>
-        ${b.lanes.map(l => `<div class="tl-row">
-          <div class="tl-label"><span class="tl-title" title="${esc(l.title)}">${esc(l.title)}</span><span class="tl-sub">${fmtDurLong(l.active)} active</span></div>
-          <div class="tl-track">${grid}${l.xs.map(x => {
-            const i = state.tlDescribe.push(describe(x)) - 1;
-            const s = Math.max(x.start, b.d0) - b.d0, e = Math.min(x.end, b.d1) - b.d0;
-            const cls = ["tl-bar", x.mins === 0 ? "unbilled" : "", x.start < b.d0 ? "from-prev" : "", x.end > b.d1 ? "to-next" : ""].filter(Boolean).join(" ");
-            return `<button class="${cls}" data-i="${i}" style="left:${pct(s)}%;width:${((e - s) / span) * 100}%" aria-label="${esc(state.tlDescribe[i])}"></button>`;
-          }).join("")}</div>
-        </div>`).join("")}
+        ${extraRows(b)}
+        ${b.lanes.map(l => laneRow(b, l)).join("")}
       </div></div>
     </section>`;
 
   $("#view").innerHTML = `
+    ${panel}
     <div class="toolbar">
       <label>Show <select id="tlView"><option value="day" ${state.tlView === "day" ? "selected" : ""}>Full day</option><option value="active" ${state.tlView === "active" ? "selected" : ""}>Active hours only</option></select></label>
       <span class="hint">Times in ${esc(zone || "the report’s time zone")}, from each session’s start time and real duration. Use the filters above to narrow to an event or dates.</span>
@@ -1478,11 +1939,12 @@ function renderTimeline() {
       ${blocks.map(dayHtml).join("")}
       ${allDays.length > limit ? `<div class="tl-more"><button class="btn" id="tlMore">Show ${allDays.length - limit} more ${allDays.length - limit === 1 ? "day" : "days"}</button></div>` : ""}
       <div class="tl-foot">
-        <div class="tl-legend">${hasUnbilled && hasBilled ? `<span><i class="tl-key"></i>${U_()} billed</span>` : ""}${hasUnbilled ? `<span><i class="tl-key unbilled"></i>No ${u_()} billed</span>` : ""}</div>
+        <div class="tl-legend">${hasUnbilled && hasBilled ? `<span><i class="tl-key"></i>${U_()} billed</span>` : ""}${hasUnbilled ? `<span><i class="tl-key unbilled"></i>No ${u_()} billed</span>` : ""}${ag ? `<span><i class="tl-key sched"></i>Scheduled in the agenda</span><span><i class="tl-key over"></i>Running outside the agenda</span>` : ""}</div>
         <div id="tlDetail" class="tl-detail" aria-live="polite">Hover over or select a bar to see its exact times.</div>
       </div>
     </div>`;
 
+  wireAgendaPanel();
   $("#tlView").onchange = e => { state.tlView = e.target.value; renderDashboard(); };
   const more = $("#tlMore"); if (more) more.onclick = () => { state.tlShowAll = true; renderDashboard(); };
   const detail = $("#tlDetail");
@@ -2250,7 +2712,7 @@ function loadDataset(data, version) {
     tab: data.joined.length ? "overview" : "timeline", tlDay: null, workspace: "", selectedEvent: null, eventGroup: "",
     range: { fromDate: "", fromTime: "", toDate: "", toTime: "" },
     table: { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" },
-    picked: new Set(), snap: null, tz: ""
+    picked: new Set(), snap: null, tz: "", agenda: data.agenda || null
   });
   applyTz();
   state.groups = data.groups && data.groups.length ? data.groups : loadGroups();
@@ -2356,7 +2818,7 @@ function snapshot() {
   return {
     joined: joined.filter(r => !ex.has(r.uid)), unmatched, balances, customer, hasTx, hasWorkspace, hasConnection, totalUsage, range,
     timeline: timeline ? { ...timeline, items: timeline.items.filter(x => !ex.has(x.uid)) } : timeline,
-    transactions, accountSnapshot, groups: state.groups
+    transactions, accountSnapshot, groups: state.groups, agenda: state.agenda || null
   };
 }
 
@@ -2492,7 +2954,7 @@ async function downloadFile() {
 
 function enterReadOnly(data, info) {
   Object.assign(state, {
-    baseData: data, tz: "", groups: data.groups || [], eventGroup: "", excluded: new Set(), picked: new Set(), readOnly: true, sharedInfo: info, tab: data.joined.length ? "overview" : "timeline", tlDay: null, workspace: "", selectedEvent: null,
+    baseData: data, tz: "", groups: data.groups || [], agenda: data.agenda || null, eventGroup: "", excluded: new Set(), picked: new Set(), readOnly: true, sharedInfo: info, tab: data.joined.length ? "overview" : "timeline", tlDay: null, workspace: "", selectedEvent: null,
     range: { fromDate: "", fromTime: "", toDate: "", toTime: "" },
     table: { sortKey: "ts", dir: -1, page: 0, q: "", account: "", session: "", from: "", to: "" }
   });
